@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-10-14)
+
+- Servers without a desktop: `sessionpulse open` now prints an SSH tunnel command and the dashboard link instead of silently doing nothing, `serve` prints the same, and `doctor` explains that the panel icon and autostart don't apply. README: "On a server" setup with a systemd user service.
+
 ## 0.1.0 (2026-10-14)
 
 - Artwork from the illustration kit: README hero, illustrated sign-in page, new panel icons (prompt + pulse line in the state colour), dashboard mark that follows the live state, favicon, and a quiet empty state.

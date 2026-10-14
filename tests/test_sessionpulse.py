@@ -334,6 +334,38 @@ class TodoTests(Fixture):
         self.assertIn("call Sam  [ops]  done", out.getvalue())
 
 
+class HeadlessTests(Fixture):
+    def run_cli(self, argv, env):
+        out = io.StringIO()
+        with unittest.mock.patch.object(config, "load", return_value=self.cfg), \
+             unittest.mock.patch.dict(os.environ, env, clear=False), \
+             unittest.mock.patch.object(sys, "platform", "linux"), \
+             unittest.mock.patch.object(cli.webbrowser, "open", return_value=True) as wb, \
+             unittest.mock.patch("sys.stdout", out):
+            for k in ("DISPLAY", "WAYLAND_DISPLAY"):
+                if k not in env:
+                    os.environ.pop(k, None)
+            cli.main(argv)
+        return out.getvalue(), wb
+
+    def test_open_without_desktop_prints_tunnel_link(self):
+        out, wb = self.run_cli(["open"], {})
+        wb.assert_not_called()
+        self.assertIn("ssh -N -L", out)
+        self.assertIn("/?token=", out)
+        self.assertIn("isn't running", out)
+
+    def test_open_with_desktop_uses_browser(self):
+        out, wb = self.run_cli(["open"], {"DISPLAY": ":0"})
+        wb.assert_called_once()
+        self.assertNotIn("ssh -N -L", out)
+
+    def test_doctor_without_desktop_explains_server_use(self):
+        out, _ = self.run_cli(["doctor"], {})
+        self.assertIn("no desktop session", out)
+        self.assertIn("sessionpulse serve", out)
+
+
 class LearnTests(Fixture):
     def sessions(self, n=6, **kw):
         now = datetime.now().astimezone()

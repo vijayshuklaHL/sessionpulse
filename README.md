@@ -88,6 +88,34 @@ sessionpulse install --no-autostart
 sessionpulse serve        # then, in another terminal:  sessionpulse open
 ```
 
+**On a server you reach over SSH** (no desktop):
+
+```sh
+pipx install sessionpulse
+sessionpulse install --no-autostart
+```
+
+Keep the dashboard running with a systemd user service:
+
+```sh
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/sessionpulse.service <<'UNIT'
+[Unit]
+Description=Session Pulse dashboard
+
+[Service]
+ExecStart=%h/.local/bin/sessionpulse serve
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+UNIT
+systemctl --user enable --now sessionpulse
+sudo loginctl enable-linger "$USER"   # keep it running after you log out
+```
+
+Then run `sessionpulse open` on the server. It prints an `ssh -N -L 8765:127.0.0.1:8765 …` tunnel command and the dashboard link to open on your own computer. The dashboard never listens on anything but `127.0.0.1`.
+
 **Turn on follow-ups** (optional, see [what it costs](#follow-ups)):
 
 ```sh

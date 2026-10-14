@@ -1,6 +1,8 @@
 """Command line: sessionpulse <command>."""
 import argparse
+import getpass
 import json
+import os
 import socket
 import sys
 import webbrowser
@@ -8,10 +10,27 @@ import webbrowser
 from . import __version__, config, followups, hook, install, reader, server, todos, tray
 
 
+def headless():
+    """True on a Linux/BSD box with no desktop session, e.g. a server you reach over SSH."""
+    return (sys.platform not in ("darwin", "win32")
+            and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"))
+
+
+def remote_hint(cfg):
+    """How to reach the dashboard from another computer through an SSH tunnel."""
+    host = f"{getpass.getuser()}@{socket.gethostname()}"
+    return (f"No desktop here, so open it from your own computer through an SSH tunnel:\n"
+            f"  ssh -N -L {cfg.port}:127.0.0.1:{cfg.port} {host}\n"
+            f"then browse to:\n  {server.open_url(cfg)}\n"
+            f"(Use the address you normally ssh to. If port {cfg.port} is busy on your computer, "
+            f"use another local port, e.g. -L 18765:127.0.0.1:{cfg.port}, and change it in the link.)")
+
+
 def cmd_serve(cfg, args):
     srv = server.make_server(cfg)
     followups.start_worker(cfg)
-    print(f"Session Pulse on {cfg.url}\nOpen it with: sessionpulse open")
+    print(f"Session Pulse on {cfg.url}\n" + (remote_hint(cfg) if headless() else "Open it with: sessionpulse open"),
+          flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
@@ -23,7 +42,11 @@ def cmd_tray(cfg, args):
 
 
 def cmd_open(cfg, args):
-    webbrowser.open(server.open_url(cfg))
+    if headless() or not webbrowser.open(server.open_url(cfg)):
+        print(remote_hint(cfg) if headless() else f"Couldn't start a browser. Open:\n  {server.open_url(cfg)}")
+    with socket.socket() as s:
+        if s.connect_ex(("127.0.0.1", cfg.port)) != 0:
+            print("Note: the dashboard isn't running. Start it with `sessionpulse serve` (or `sessionpulse tray`).")
 
 
 def cmd_hook(cfg, args):
@@ -79,11 +102,17 @@ def cmd_doctor(cfg, args):
              else "start/exit hooks missing: run `sessionpulse install`")
     except install.SettingsError as exc:
         line(False, str(exc))
-    missing = tray.available()
-    print(f"  {'ok ' if not missing else '-- '}  {'panel icon available' if not missing else missing}")
+    if headless():
+        print("  --   no desktop session: the panel icon and login autostart don't apply here. "
+              "Run `sessionpulse serve` (see \"On a server\" in the README) and use `sessionpulse open` "
+              "for the SSH tunnel link.")
+    else:
+        missing = tray.available()
+        print(f"  {'ok ' if not missing else '-- '}  {'panel icon available' if not missing else missing}")
     with socket.socket() as s:
         busy = s.connect_ex(("127.0.0.1", cfg.port)) == 0
-    print(f"  {'ok ' if busy else '-- '}  dashboard {'running' if busy else 'not running'} on {cfg.url}")
+    print(f"  {'ok ' if busy else '-- '}  dashboard {'running' if busy else 'not running'} on {cfg.url}"
+          + ("" if busy else ": start it with `sessionpulse serve`"))
     for w in h["warnings"]:
         line(False, w)
     return 0 if ok else 1
