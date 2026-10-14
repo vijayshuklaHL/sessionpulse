@@ -3,6 +3,7 @@
 ## Unreleased
 
 - `sessionpulse daemon`: the dashboard server and follow-ups without a panel icon, writing `status.json` (open/working sessions, today's totals, open to-dos; no token, mode 0600) every 5 seconds for panel widgets such as the coming GNOME extension. `install --daemon` starts it at login; `doctor` reports whether status.json is fresh. Format: docs/status-json.md.
+- GNOME Shell extension (45 to 48) in `gnome-extension/`: a top-bar indicator and menu that read status.json. No network and no subprocesses. Build it with `gnome-extension/pack.sh`.
 
 ## 0.1.2 (2026-10-14)
 

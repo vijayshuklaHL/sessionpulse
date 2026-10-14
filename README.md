@@ -126,6 +126,27 @@ sessionpulse followups    # read the last 30 days now instead of waiting
 
 Check everything with `sessionpulse doctor`. Remove it with `sessionpulse uninstall` (your data stays) and `pipx uninstall sessionpulse`.
 
+## GNOME extension
+
+A native top-bar indicator for GNOME Shell 45 to 48, as an alternative to the AppIndicator panel icon. It shows the same thing: the number of open sessions, orange while one is working, plus a menu with each session, today's totals, and links to the dashboard and the to-do board.
+
+The extension only reads `~/.local/share/sessionpulse/status.json` ([format](https://github.com/vijayshuklaHL/sessionpulse/blob/main/docs/status-json.md)), which `sessionpulse daemon` writes, so the app has to be installed too:
+
+```sh
+pipx install sessionpulse
+sessionpulse install --daemon   # hooks, plus the daemon (no icon) at login
+sessionpulse daemon &           # start it now
+```
+
+Then install the extension. It isn't on extensions.gnome.org yet, so install it from a clone of this repo:
+
+```sh
+gnome-extension/pack.sh
+gnome-extensions install --force gnome-extension/dist/sessionpulse@vijayshuklaHL.github.io.shell-extension.zip
+```
+
+Log out and back in (on X11 you can press Alt+F2 and type `r` instead), then run `gnome-extensions enable sessionpulse@vijayshuklaHL.github.io`. If you used the panel icon before, stop it: run `sessionpulse install --daemon` again so login starts the daemon instead of the tray.
+
 ## Commands
 
 | Command | What it does |

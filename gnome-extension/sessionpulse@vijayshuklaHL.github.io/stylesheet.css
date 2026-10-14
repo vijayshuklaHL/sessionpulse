@@ -1,0 +1,8 @@
+.sessionpulse-count {
+  padding-left: 4px;
+  font-feature-settings: "tnum";
+}
+
+.sessionpulse-muted {
+  color: #9a9a9a;
+}

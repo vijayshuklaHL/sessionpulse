@@ -1,0 +1,8 @@
+{
+  "uuid": "sessionpulse@vijayshuklaHL.github.io",
+  "name": "Session Pulse",
+  "description": "Your Claude Code sessions in the top bar: how many are open, which are working, today's totals and open to-dos, with one click to the dashboard.\n\nNeeds the Session Pulse app, which does the work and keeps your data on your machine:\n  pipx install sessionpulse\n  sessionpulse install --daemon\n\nThe extension only reads a small status file the app writes; it makes no network requests and runs no programs.",
+  "shell-version": ["45", "46", "47", "48"],
+  "url": "https://github.com/vijayshuklaHL/sessionpulse",
+  "version": 1
+}
