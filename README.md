@@ -10,6 +10,7 @@ See every session at a glance, and never lose track of what a session left for y
   <img alt="Local only" src="https://img.shields.io/badge/data-stays%20on%20your%20machine-1a7f37">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-555"></a>
   <a href="https://github.com/sponsors/vijayshuklaHL"><img alt="Sponsor on GitHub" src="https://img.shields.io/badge/sponsor-%E2%9D%A4-db61a2?logo=githubsponsors&logoColor=white"></a>
+  <a href="https://buymeacoffee.com/vijayshuklahl"><img alt="Buy me a coffee" src="https://img.shields.io/badge/buy%20me%20a-coffee-ffdd00?logo=buymeacoffee&logoColor=000"></a>
 </p>
 
 <p align="center"><img src="docs/images/session-pulse-working-animated.svg" width="760"
@@ -182,7 +183,8 @@ If Session Pulse saves you time:
 
 - ⭐ **Star the repo.** It helps other Claude Code users find it.
 - 🐛 **Report bugs or ideas** in [Issues](https://github.com/vijayshuklaHL/sessionpulse/issues).
-- 💖 **[Sponsor on GitHub](https://github.com/sponsors/vijayshuklaHL).** Even a coffee's worth a month keeps it maintained.
+- ☕ **[Buy me a coffee](https://buymeacoffee.com/vijayshuklahl)** for a one-off thank-you.
+- 💖 **[Sponsor on GitHub](https://github.com/sponsors/vijayshuklaHL)** for monthly support. Even a coffee's worth a month keeps it maintained.
 
 ## Licence
 
