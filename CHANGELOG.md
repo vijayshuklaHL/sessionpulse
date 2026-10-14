@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-14)
 
 - Artwork from the illustration kit: README hero, illustrated sign-in page, new panel icons (prompt + pulse line in the state colour), dashboard mark that follows the live state, favicon, and a quiet empty state.
 - Board tab: kanban of all to-dos by category or by status, with drag and drop, project filter and search; "Open to-do board" in the panel menu.

@@ -13,7 +13,7 @@ See every session at a glance, and never lose track of what a session left for y
   <a href="https://buymeacoffee.com/vijayshuklahl"><img alt="Buy me a coffee" src="https://img.shields.io/badge/buy%20me%20a-coffee-ffdd00?logo=buymeacoffee&logoColor=000"></a>
 </p>
 
-<p align="center"><img src="docs/images/session-pulse-working-animated.svg" width="760"
+<p align="center"><img src="https://raw.githubusercontent.com/vijayshuklaHL/sessionpulse/main/docs/images/session-pulse-working-animated.svg" width="760"
   alt="Session Pulse: a terminal prompt whose cursor turns into a pulse line, with Working, Idle and No sessions states"></p>
 
 ### See it in action (1 minute)
@@ -41,15 +41,15 @@ It reads the files Claude Code already writes under `~/.claude`. **Nothing leave
 
 ## Screenshots
 
-<p align="center"><img src="docs/images/overview.jpg" width="900" alt="Overview: live sessions, KPIs, to-do list and completed items"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/vijayshuklaHL/sessionpulse/main/docs/images/overview.jpg" width="900" alt="Overview: live sessions, KPIs, to-do list and completed items"></p>
 
 | To-dos that fill themselves | One board for everything you still owe |
 |---|---|
-| <img src="docs/images/todo.jpg" alt="To-do list grouped by project, with follow-ups picked up from sessions"> | <img src="docs/images/board.jpg" alt="Kanban board with colour-coded columns: Decide, Outside work, Waiting on, Checklist, Later, Added by me, Done"> |
+| <img src="https://raw.githubusercontent.com/vijayshuklaHL/sessionpulse/main/docs/images/todo.jpg" alt="To-do list grouped by project, with follow-ups picked up from sessions"> | <img src="https://raw.githubusercontent.com/vijayshuklaHL/sessionpulse/main/docs/images/board.jpg" alt="Kanban board with colour-coded columns: Decide, Outside work, Waiting on, Checklist, Later, Added by me, Done"> |
 
 | Get better at Claude Code | Light theme |
 |---|---|
-| <img src="docs/images/learn.jpg" alt="Suggestions based on your usage, with links to free official docs and courses"> | <img src="docs/images/overview-light.jpg" alt="The overview in the light theme"> |
+| <img src="https://raw.githubusercontent.com/vijayshuklaHL/sessionpulse/main/docs/images/learn.jpg" alt="Suggestions based on your usage, with links to free official docs and courses"> | <img src="https://raw.githubusercontent.com/vijayshuklaHL/sessionpulse/main/docs/images/overview-light.jpg" alt="The overview in the light theme"> |
 
 *All screenshots use made-up data (`tools/showcase/`).*
 
@@ -67,13 +67,13 @@ It reads the files Claude Code already writes under `~/.claude`. **Nothing leave
 
 ## Install
 
-Requires Python 3.11+ and Claude Code. Not on PyPI yet, so install straight from GitHub.
+Requires Python 3.11+ and Claude Code.
 
 **Linux with the panel icon** (Ubuntu and Debian shown):
 
 ```sh
 sudo apt install pipx python3-gi gir1.2-ayatanaappindicator3-0.1
-pipx install --system-site-packages git+https://github.com/vijayshuklaHL/sessionpulse
+pipx install --system-site-packages sessionpulse
 sessionpulse install      # adds the start/exit hooks and a login autostart
 sessionpulse tray &       # start the panel icon now
 ```
@@ -83,7 +83,7 @@ On GNOME you also need the AppIndicator extension. Ubuntu has it on by default; 
 **macOS, or without the panel icon:**
 
 ```sh
-pipx install git+https://github.com/vijayshuklaHL/sessionpulse
+pipx install sessionpulse
 sessionpulse install --no-autostart
 sessionpulse serve        # then, in another terminal:  sessionpulse open
 ```
@@ -146,7 +146,7 @@ Transcripts contain everything you type into Claude Code, so the dashboard is lo
 - Only the artwork under `/brand/` is served without the token.
 - It never writes to Claude Code's files, except `install`/`uninstall`, which edit the `hooks` section of `settings.json` after a timestamped backup.
 
-Found a problem? See [SECURITY.md](SECURITY.md).
+Found a problem? See [SECURITY.md](https://github.com/vijayshuklaHL/sessionpulse/blob/main/SECURITY.md).
 
 ## How the numbers are worked out
 
@@ -177,7 +177,7 @@ python3 -m unittest discover -s tests          # 38 tests, a few seconds
 PYTHONPATH=src python3 -m sessionpulse serve   # then: PYTHONPATH=src python3 -m sessionpulse open
 ```
 
-If you build something others would like, a pull request is very welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). The MIT licence only asks that you keep the copyright notice.
+If you build something others would like, a pull request is very welcome. See [CONTRIBUTING.md](https://github.com/vijayshuklaHL/sessionpulse/blob/main/CONTRIBUTING.md). The MIT licence only asks that you keep the copyright notice.
 
 ## Support
 
@@ -190,4 +190,4 @@ If Session Pulse saves you time:
 
 ## Licence
 
-[MIT](LICENSE) © 2026 Vijay Shukla. Claude and Claude Code are trademarks of Anthropic, used here only to say what this tool works with.
+[MIT](https://github.com/vijayshuklaHL/sessionpulse/blob/main/LICENSE) © 2026 Vijay Shukla. Claude and Claude Code are trademarks of Anthropic, used here only to say what this tool works with.
