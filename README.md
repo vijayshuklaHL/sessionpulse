@@ -16,9 +16,11 @@ See every session at a glance, and never lose track of what a session left for y
 <p align="center"><img src="docs/images/session-pulse-working-animated.svg" width="760"
   alt="Session Pulse: a terminal prompt whose cursor turns into a pulse line, with Working, Idle and No sessions states"></p>
 
-<!-- Demo video: on github.com, edit this README and drag the showcase .mp4 onto this line.
-     GitHub hosts it and puts a player here, so the video doesn't bloat every clone.
-     To make a fresh one: tools/showcase/run.sh -->
+### See it in action (1 minute)
+
+https://github.com/user-attachments/assets/a1936f37-17d0-4510-aca5-a80febc0d7ad
+
+<sub>Made-up data throughout. Re-record it with <code>tools/showcase/run.sh</code>.</sub>
 
 
 ---
