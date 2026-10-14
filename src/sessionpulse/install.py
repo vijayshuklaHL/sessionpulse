@@ -126,7 +126,8 @@ def uninstall_hooks(cfg: Config):
     return changed
 
 
-def enable_autostart():
+def enable_autostart(mode="tray"):
+    """Start `sessionpulse tray` (panel icon) or `sessionpulse daemon` (no icon) at login."""
     icon = Path(__file__).with_name("icons") / "sessionpulse-idle.svg"
     AUTOSTART.parent.mkdir(parents=True, exist_ok=True)
     AUTOSTART.write_text(
@@ -134,7 +135,7 @@ def enable_autostart():
         "Type=Application\n"
         "Name=Session Pulse\n"
         "Comment=Panel icon and dashboard for Claude Code sessions\n"
-        f'Exec="{sys.executable}" -m sessionpulse tray\n'
+        f'Exec="{sys.executable}" -m sessionpulse {mode}\n'
         f"Icon={icon}\n"
         "Terminal=false\n"
         "X-GNOME-Autostart-enabled=true\n"

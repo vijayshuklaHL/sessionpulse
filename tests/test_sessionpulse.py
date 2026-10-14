@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from sessionpulse import cli, config, followups, hook, install, learn, reader, server, todos, tray  # noqa: E402
+from sessionpulse import cli, config, followups, hook, install, learn, reader, server, status, todos, tray  # noqa: E402
 
 SID = "11111111-2222-3333-4444-555555555555"
 
@@ -344,6 +344,72 @@ class TodoTests(Fixture):
             cli.main(["todo", "done", i])
             cli.main(["todo", "list-done"])
         self.assertIn("call Sam  [ops]  done", out.getvalue())
+
+
+class StatusTests(Fixture):
+    def live_session(self):
+        t = self.t0
+        self.write([user(t, "hi"), assistant(t, "m1", 42)])
+        (self.cfg.claude / "sessions" / "1.json").write_text(json.dumps(
+            {"pid": os.getpid(), "sessionId": SID, "status": "busy", "startedAt": 1234}))
+        return t.date().isoformat()
+
+    def test_status_file(self):
+        day = self.live_session()
+        todos.apply(self.cfg, {"op": "add", "text": "ship it"})
+        data = status.write_now(self.cfg, today=day)
+        on_disk = json.loads(status.path(self.cfg).read_text())
+        self.assertEqual(on_disk, data)
+        self.assertEqual((data["schema"], data["state"], data["open"], data["working"]), (1, "busy", 1, 1))
+        self.assertEqual(data["sessions"][0]["state"], "busy")
+        self.assertEqual(data["sessions"][0]["started"], 1234)
+        self.assertEqual(data["today"]["output_tokens"], 42)
+        self.assertEqual(data["todos_open"], 1)
+        self.assertEqual(status.path(self.cfg).stat().st_mode & 0o777, 0o600)
+        self.assertNotIn(config.token(self.cfg), status.path(self.cfg).read_text())
+        self.assertLess(status.age(self.cfg), 5)
+        self.assertEqual(list(self.cfg.data.glob(".status.*")), [])  # no temp files left
+
+    def test_no_sessions_and_removal(self):
+        data = status.write_now(self.cfg)
+        self.assertEqual((data["state"], data["open"], data["sessions"]), ("none", 0, []))
+        status.remove(self.cfg)
+        status.remove(self.cfg)  # twice is fine
+        self.assertIsNone(status.age(self.cfg))
+
+    def test_daemon_loop_writes_then_cleans_up(self):
+        self.live_session()
+        stop, seen = threading.Event(), []
+
+        def watch():
+            for _ in range(200):
+                if status.path(self.cfg).exists():
+                    seen.append(json.loads(status.path(self.cfg).read_text())["open"])
+                    break
+                stop.wait(0.01)
+            stop.set()
+
+        threading.Thread(target=watch).start()
+        with unittest.mock.patch.object(status, "INTERVAL", 0.02):
+            status.run(self.cfg, stop)
+        self.assertEqual(seen, [1])
+        self.assertFalse(status.path(self.cfg).exists())
+
+    def test_daemon_command_runs_without_icon(self):
+        with unittest.mock.patch.object(config, "load", return_value=self.cfg), \
+             unittest.mock.patch.object(cli.signal, "signal"), \
+             unittest.mock.patch.object(cli.followups, "start_worker"), \
+             unittest.mock.patch.object(cli.status, "run") as run, \
+             unittest.mock.patch("sys.stdout", io.StringIO()) as out:
+            cli.main(["daemon"])
+        run.assert_called_once()
+        self.assertIn("status.json", out.getvalue())
+
+    def test_install_daemon_autostart(self):
+        target = Path(self.tmp.name) / "autostart" / "sessionpulse.desktop"
+        with unittest.mock.patch.object(install, "AUTOSTART", target):
+            install.enable_autostart("daemon")
+        self.assertIn("-m sessionpulse daemon", target.read_text())
 
 
 class HeadlessTests(Fixture):

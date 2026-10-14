@@ -3,11 +3,13 @@ import argparse
 import getpass
 import json
 import os
+import signal
 import socket
 import sys
+import threading
 import webbrowser
 
-from . import __version__, config, followups, hook, install, reader, server, todos, tray
+from . import __version__, config, followups, hook, install, reader, server, status, todos, tray
 
 
 def headless():
@@ -37,6 +39,24 @@ def cmd_serve(cfg, args):
         pass
 
 
+def cmd_daemon(cfg, args):
+    """Dashboard server + follow-ups + status.json, no icon: for the GNOME extension."""
+    try:
+        srv = server.make_server(cfg)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        followups.start_worker(cfg)
+        print(f"Session Pulse on {cfg.url}", flush=True)
+    except OSError:
+        print(f"Port {cfg.port} is already in use (another `sessionpulse serve`/`tray`?); "
+              "writing status.json only.", flush=True)
+    print(f"Writing {status.path(cfg)} every {status.INTERVAL}s", flush=True)
+    stop = threading.Event()
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(sig, lambda *_: stop.set())
+    status.run(cfg, stop, on_error=lambda exc: print(f"status.json not written: {exc}",
+                                                    file=sys.stderr, flush=True))
+
+
 def cmd_tray(cfg, args):
     tray.run(cfg)
 
@@ -61,6 +81,10 @@ def cmd_install(cfg, args):
     print(("Added" if changed else "Already present:") +
           f" SessionStart/SessionEnd hooks in {cfg.claude / 'settings.json'}")
     if args.no_autostart:
+        return
+    if args.daemon:
+        print(f"Background daemon will start at login ({install.enable_autostart('daemon')}).")
+        print("Start it now with: sessionpulse daemon &")
         return
     missing = tray.available()
     if missing:
@@ -113,6 +137,11 @@ def cmd_doctor(cfg, args):
         busy = s.connect_ex(("127.0.0.1", cfg.port)) == 0
     print(f"  {'ok ' if busy else '-- '}  dashboard {'running' if busy else 'not running'} on {cfg.url}"
           + ("" if busy else ": start it with `sessionpulse serve`"))
+    a = status.age(cfg)
+    if a is not None:
+        fresh = a < status.INTERVAL * 3
+        print(f"  {'ok ' if fresh else '-- '}  status.json {'updated' if fresh else 'stale, last updated'} "
+              f"{int(a)}s ago{'' if fresh else ': is `sessionpulse daemon` running?'}")
     for w in h["warnings"]:
         line(False, w)
     return 0 if ok else 1
@@ -159,11 +188,14 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="sessionpulse", description=__doc__)
     p.add_argument("--version", action="version", version=f"sessionpulse {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("install", help="add Claude Code hooks and login autostart") \
-       .add_argument("--no-autostart", action="store_true", help="only add the hooks")
+    i = sub.add_parser("install", help="add Claude Code hooks and login autostart")
+    i.add_argument("--no-autostart", action="store_true", help="only add the hooks")
+    i.add_argument("--daemon", action="store_true",
+                   help="autostart the background daemon (for the GNOME extension) instead of the panel icon")
     sub.add_parser("uninstall", help="remove the hooks and autostart (keeps your data)")
     sub.add_parser("tray", help="panel icon + dashboard server")
     sub.add_parser("serve", help="dashboard server only")
+    sub.add_parser("daemon", help="dashboard server + status.json for the GNOME extension, no icon")
     sub.add_parser("open", help="open the dashboard in your browser")
     sub.add_parser("doctor", help="check the setup and data formats")
     sub.add_parser("snapshot", help="print the dashboard data as JSON")

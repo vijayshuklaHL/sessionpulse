@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `sessionpulse daemon`: the dashboard server and follow-ups without a panel icon, writing `status.json` (open/working sessions, today's totals, open to-dos; no token, mode 0600) every 5 seconds for panel widgets such as the coming GNOME extension. `install --daemon` starts it at login; `doctor` reports whether status.json is fresh. Format: docs/status-json.md.
+
 ## 0.1.2 (2026-10-14)
 
 - The dashboard now works through an SSH tunnel on any local port (e.g. `-L 18765:127.0.0.1:8765`); before, anything but the same port got "wrong host". It still only answers to 127.0.0.1/localhost, and writes now need an Origin equal to the address the request went to, so other local pages can't post to it.

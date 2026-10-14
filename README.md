@@ -134,6 +134,7 @@ Check everything with `sessionpulse doctor`. Remove it with `sessionpulse uninst
 | `sessionpulse uninstall` | Removes exactly those hooks and the autostart entry. Your data stays. |
 | `sessionpulse tray` | Panel icon and dashboard server |
 | `sessionpulse serve` | Dashboard server only |
+| `sessionpulse daemon` | Dashboard server plus `status.json` for panel widgets such as the GNOME extension, no icon (`install --daemon` starts it at login) |
 | `sessionpulse open` | Opens the dashboard in your browser, signed in (add `#board` to the address for the board) |
 | `sessionpulse doctor` | Checks the setup and warns if Claude Code's file formats look different |
 | `sessionpulse todo [add TEXT -p PROJECT \| done ID \| undo ID \| delete ID \| list-done]` | Your to-do list from the terminal |
