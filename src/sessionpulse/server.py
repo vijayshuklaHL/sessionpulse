@@ -2,8 +2,9 @@
 
 Transcripts contain everything typed into Claude Code, so the server:
   * binds to 127.0.0.1 only;
-  * rejects any Host header other than 127.0.0.1/localhost on our port, which
-    stops DNS-rebinding pages in your browser from reading it;
+  * rejects any Host header other than 127.0.0.1/localhost, which stops
+    DNS-rebinding pages in your browser from reading it (any port, so an SSH
+    tunnel such as -L 18765:127.0.0.1:8765 works);
   * needs a token (from <data_dir>/token). Open /?token=… once, via
     `sessionpulse open` or the panel menu, and it is kept as an HttpOnly,
     SameSite=Strict cookie, so other local users and other sites can't read it.
@@ -30,7 +31,10 @@ DENIED = b"""<!doctype html><meta charset="utf-8"><meta name="viewport" content=
 
 
 def make_handler(cfg: config.Config, tok: str):
-    allowed_hosts = {f"127.0.0.1:{cfg.port}", f"localhost:{cfg.port}"}
+    def local_host(value):
+        name, _, port = (value or "").rpartition(":")
+        return name in ("127.0.0.1", "localhost") and port.isdigit()
+
     page = resources.files("sessionpulse").joinpath("static/dashboard.html").read_bytes()
     # Illustrations and the favicon: public (the sign-in page shows one), and only these files.
     brand = {f.name: f.read_bytes() for f in resources.files("sessionpulse").joinpath("static/brand").iterdir()
@@ -59,7 +63,7 @@ def make_handler(cfg: config.Config, tok: str):
             return hmac.compare_digest(got.encode(), tok.encode())
 
         def do_GET(self):
-            if self.headers.get("Host") not in allowed_hosts:
+            if not local_host(self.headers.get("Host")):
                 return self.send(421, b"wrong host", "text/plain")
             url = urlparse(self.path)
             if url.path.startswith("/brand/"):
@@ -87,13 +91,14 @@ def make_handler(cfg: config.Config, tok: str):
         def do_POST(self):
             # Writes need, on top of the cookie: a JSON content type (a plain cross-site
             # form can't send one without a CORS preflight, which we never answer) and,
-            # when the browser sends one, an Origin of this dashboard.
-            if self.headers.get("Host") not in allowed_hosts:
+            # when the browser sends one, an Origin equal to the address the request
+            # went to, so another local page (e.g. 127.0.0.1:3000) can't post here.
+            if not local_host(self.headers.get("Host")):
                 return self.send(421, b"wrong host", "text/plain")
             if not self.authed():
                 return self.send(403, b"forbidden", "text/plain")
             origin = self.headers.get("Origin")
-            if origin and origin.removeprefix("http://") not in allowed_hosts:
+            if origin and origin != f"http://{self.headers.get('Host')}":
                 return self.send(403, b"bad origin", "text/plain")
             if (self.headers.get("Content-Type") or "").split(";")[0].strip() != "application/json":
                 return self.send(415, b"expected application/json", "text/plain")

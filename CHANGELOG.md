@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 (2026-10-14)
+
+- The dashboard now works through an SSH tunnel on any local port (e.g. `-L 18765:127.0.0.1:8765`); before, anything but the same port got "wrong host". It still only answers to 127.0.0.1/localhost, and writes now need an Origin equal to the address the request went to, so other local pages can't post to it.
+
 ## 0.1.1 (2026-10-14)
 
 - Servers without a desktop: `sessionpulse open` now prints an SSH tunnel command and the dashboard link instead of silently doing nothing, `serve` prints the same, and `doctor` explains that the panel icon and autostart don't apply. README: "On a server" setup with a systemd user service.

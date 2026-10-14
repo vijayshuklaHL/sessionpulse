@@ -235,6 +235,17 @@ class ServerTests(Fixture):
         code, headers, _ = self.get(f"/?token={config.token(self.cfg)}")
         cookie = headers["Set-Cookie"].split(";")[0]
         self.assertEqual(self.get("/api/data", {"Cookie": cookie, "Host": "evil.example:80"})[0], 421)
+        self.assertEqual(self.get("/api/data", {"Cookie": cookie, "Host": "127.0.0.1.evil.example:80"})[0], 421)
+        self.assertEqual(self.get("/api/data", {"Cookie": cookie, "Host": "127.0.0.1"})[0], 421)
+
+    def test_ssh_tunnel_on_another_local_port(self):
+        tunnel = {"Host": "127.0.0.1:18765"}
+        code, headers, _ = self.get(f"/?token={config.token(self.cfg)}", tunnel)
+        self.assertEqual(code, 303)
+        cookie = headers["Set-Cookie"].split(";")[0]
+        self.assertEqual(self.get("/api/data", {"Cookie": cookie, **tunnel})[0], 200)
+        add = {"op": "add", "text": "via tunnel"}
+        self.assertEqual(self.post(add, {**tunnel, "Origin": "http://127.0.0.1:18765"})[0], 200)
 
     def test_brand_images_are_public_but_only_listed_files(self):
         code, headers, body = self.get("/brand/favicon.svg")
@@ -276,6 +287,7 @@ class ServerTests(Fixture):
         self.assertEqual(self.post(add, {"Cookie": None})[0], 403)
         self.assertEqual(self.post(add, {"Content-Type": "text/plain"})[0], 415)
         self.assertEqual(self.post(add, {"Origin": "http://evil.example"})[0], 403)
+        self.assertEqual(self.post(add, {"Origin": "http://127.0.0.1:3000"})[0], 403)  # another local page
         self.assertEqual(self.post(b"not json")[0], 400)
         self.assertEqual(todos.load(self.cfg), [])
         self.assertEqual(self.post(add, {"Origin": f"http://127.0.0.1:{self.cfg.port}"})[0], 200)
