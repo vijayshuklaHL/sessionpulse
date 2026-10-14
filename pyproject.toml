@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sessionpulse"
+version = "0.1.0"
+description = "A quiet instrument panel for Claude Code: live sessions, usage, and a to-do board that fills itself from your sessions. Local only."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Vijay Shukla"}]
+keywords = ["claude", "claude-code", "dashboard", "kanban", "todo", "developer-tools", "tray", "productivity"]
+requires-python = ">=3.11"
+dependencies = []
+classifiers = [
+  "Environment :: X11 Applications :: GTK",
+  "Environment :: Web Environment",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/vijayshuklaHL/sessionpulse"
+Issues = "https://github.com/vijayshuklaHL/sessionpulse/issues"
+Changelog = "https://github.com/vijayshuklaHL/sessionpulse/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+# The panel icon needs PyGObject plus the Ayatana AppIndicator typelib from your
+# distro (Ubuntu: sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1).
+# Install with `pipx install --system-site-packages sessionpulse` to use them.
+tray = []
+
+[project.scripts]
+sessionpulse = "sessionpulse.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sessionpulse = ["static/*.html", "static/brand/*.svg", "icons/*.svg"]

@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session Pulse</title>
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f3ef; --surface-1: #fcfcfb; --surface-2: #f0efec; --border: #e2e0da;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #8a8984;
+  --grid: #e8e6e1; --accent: #2a78d6;
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+  --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
+  --other: #a3a29c;
+  --good: #1a7f37; --good-bg: #e6f4ea; --busy: #c25e00; --busy-bg: #fdf0e3;
+  --muted-bg: #ecebe7; --crit: #c92a2a; --crit-bg: #fbe9e9;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface-1: #1a1a19; --surface-2: #232321; --border: #33332f;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8c8b83;
+    --grid: #2b2b28; --accent: #3987e5;
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+    --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+    --other: #6b6a65;
+    --good: #5cc27a; --good-bg: #1d3324; --busy: #f0a24a; --busy-bg: #3a2a17;
+    --muted-bg: #2a2a27; --crit: #f07575; --crit-bg: #3a1f1f;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface-1: #1a1a19; --surface-2: #232321; --border: #33332f;
+  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8c8b83;
+  --grid: #2b2b28; --accent: #3987e5;
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+  --other: #6b6a65;
+  --good: #5cc27a; --good-bg: #1d3324; --busy: #f0a24a; --busy-bg: #3a2a17;
+  --muted-bg: #2a2a27; --crit: #f07575; --crit-bg: #3a1f1f;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-primary);
+  font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-secondary); margin: 0 0 12px; }
+.sub { color: var(--text-muted); font-size: 12px; }
+.spacer { flex: 1; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 2px; }
+.seg button { border: 0; background: none; color: var(--text-secondary); font: inherit;
+  font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface-1); color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.grid { display: grid; gap: 14px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 14px; }
+.kpi .label { font-size: 12px; color: var(--text-secondary); }
+.kpi .val { font-size: 28px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.kpi .note { font-size: 12px; color: var(--text-muted); }
+.two { grid-template-columns: 3fr 2fr; margin-bottom: 14px; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+.live-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); }
+.live { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface-1); }
+.live .top { display: flex; align-items: center; gap: 8px; }
+.live .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.live .meta { color: var(--text-secondary); font-size: 12px; margin-top: 6px; display: grid;
+  grid-template-columns: auto 1fr; gap: 2px 10px; }
+.live .meta b { font-weight: 500; color: var(--text-muted); }
+.live .prompt { margin-top: 8px; font-size: 12px; color: var(--text-secondary); display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.busy { color: var(--busy); background: var(--busy-bg); }
+.pill.busy::before { animation: pulse 1.2s infinite; }
+.pill.idle { color: var(--good); background: var(--good-bg); }
+.pill.exited { color: var(--text-secondary); background: var(--muted-bg); }
+.pill.closed { color: var(--text-muted); background: var(--muted-bg); }
+.pill.closed::before { background: transparent; border: 1.5px solid currentColor; width: 5px; height: 5px; }
+@keyframes pulse { 50% { opacity: .25; } }
+.empty { color: var(--text-muted); font-size: 13px; padding: 8px 0; }
+.chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+.chart-head h2 { margin: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-secondary); margin: 4px 0 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+svg text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart { position: relative; }
+.tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  min-width: 150px; display: none; z-index: 5; }
+.tip .t { font-weight: 600; margin-bottom: 4px; }
+.tip .r { display: flex; gap: 8px; justify-content: space-between; color: var(--text-secondary); }
+.tip .r i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 5px; }
+.tip .r b { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--text-muted); font-size: 12px; padding: 6px 8px;
+  border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+tbody tr.row { cursor: pointer; }
+tbody tr.row:hover { background: var(--surface-2); }
+td.prompt { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+td.proj { white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.detail td { background: var(--surface-2); font-size: 12px; color: var(--text-secondary); }
+.detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 4px 0; }
+.detail dt { color: var(--text-muted); }
+.detail dd { margin: 0; word-break: break-word; }
+code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface-2);
+  padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); }
+.copy { font: inherit; font-size: 11px; border: 1px solid var(--border); background: var(--surface-1);
+  color: var(--text-secondary); border-radius: 5px; padding: 1px 6px; cursor: pointer; margin-left: 6px; }
+.scroll { overflow-x: auto; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+input[type=search], select { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); }
+input[type=search] { flex: 1; min-width: 200px; }
+.bar-mini { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.bar-mini i { display: block; height: 100%; background: var(--series-1); border-radius: 3px; }
+.ev { display: grid; grid-template-columns: 78px auto 1fr; gap: 4px 10px; font-size: 12px; padding: 6px 0;
+  border-bottom: 1px solid var(--grid); align-items: center; }
+.ev .when { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.ev .what { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.events { max-height: 330px; overflow-y: auto; }
+.theme { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+  border-radius: 8px; padding: 5px 9px; cursor: pointer; font: inherit; font-size: 12px; }
+.warn { color: var(--busy); background: var(--busy-bg); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: none; font-size: 13px; }
+.warn ul { margin: 4px 0 0; padding-left: 18px; }
+.err { color: var(--crit); background: var(--crit-bg); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: none; }
+.halves { grid-template-columns: 3fr 2fr; margin-bottom: 14px; }
+#todo-list { max-height: 620px; }
+.pgroup { border-bottom: 1px solid var(--grid); }
+.pgroup > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 2px; font-size: 13px;
+  font-weight: 600; list-style: none; }
+.pgroup > summary::-webkit-details-marker { display: none; }
+.pgroup > summary::before { content: "▸"; color: var(--text-muted); font-size: 11px; width: 10px; }
+.pgroup[open] > summary::before { content: "▾"; }
+.pgroup > summary .n { font-weight: 400; color: var(--text-muted); font-size: 12px; }
+.pgroup > summary .kinds { display: flex; gap: 4px; margin-left: 4px; }
+.pgroup > summary .kinds .kindtag { margin: 0; }
+.pgroup > ul { list-style: none; margin: 0 0 6px; padding: 0 0 0 16px; }
+.dismiss-all { margin-left: auto; font: inherit; font-size: 11px; font-weight: 400; border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-secondary); border-radius: 5px; padding: 1px 8px; cursor: pointer; }
+.dismiss-all.armed { color: var(--crit); border-color: var(--crit); }
+@media (max-width: 860px) { .halves { grid-template-columns: 1fr; } }
+.halves > *, .two > * { min-width: 0; }
+.pgroup > summary { flex-wrap: wrap; }
+.chart-head .seg { flex-wrap: wrap; }
+.count { font-size: 12px; color: var(--text-muted); }
+.todo-add { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.todo-add input { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); min-width: 0; }
+.todo-add #todo-text { flex: 3 1 200px; }
+.todo-add #todo-proj { flex: 1 1 120px; }
+.btn { font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+.todos { list-style: none; margin: 0; padding: 0; max-height: 330px; overflow-y: auto; }
+.todo { display: grid; grid-template-columns: auto 1fr auto auto; gap: 4px 10px; align-items: start;
+  padding: 7px 2px; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.todo input[type=checkbox] { margin: 3px 0 0; width: 15px; height: 15px; accent-color: var(--good); cursor: pointer; }
+.todo .txt { word-break: break-word; }
+.todo .txt .tag { margin-left: 6px; }
+.todo .when { color: var(--text-muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.todo .x { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; }
+.todo .x:hover { color: var(--crit); }
+.tag { display: inline-block; font-size: 11px; color: var(--text-secondary); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; white-space: nowrap; }
+.todo .detail { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.todo .from { display: block; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.todo .from .copy { margin-left: 4px; }
+.kindtag { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  border-radius: 5px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; white-space: nowrap; }
+/* One color per category, shared by tags, dots, board columns and card stripes. */
+.k-decision { --c: var(--crit); } .k-external { --c: var(--busy); } .k-waiting { --c: var(--series-7); }
+.k-checklist { --c: var(--accent); } .k-task { --c: var(--series-5); } .k-mine, .k-todo { --c: var(--other); }
+.k-doing { --c: var(--accent); } .k-done { --c: var(--good); }
+.kindtag { color: color-mix(in srgb, var(--c) 78%, var(--text-primary));
+  background: color-mix(in srgb, var(--c) 16%, transparent); }
+.kindtag.dot { background: var(--c); }
+.fu-status { font-size: 12px; color: var(--text-muted); margin: -2px 0 8px; }
+.fu-status code { font-size: 11px; }
+.done-day { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 10px 0 2px; }
+.done-day:first-child { margin-top: 0; }
+.todo.is-done .txt { color: var(--text-secondary); }
+.learn-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin-bottom: 12px; }
+.tip-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface-1); }
+.tip-card h3 { font-size: 14px; margin: 0 0 4px; }
+.tip-card p { font-size: 12px; color: var(--text-secondary); margin: 0 0 8px; }
+.tip-card ul, .lib ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tip-card li, .lib li { font-size: 13px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.kind { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-left: 6px; }
+.strengths { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); align-items: center; }
+.strengths .pill { font-weight: 500; }
+.lib summary { cursor: pointer; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.lib-cols { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.lib h3 { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 0 0 6px; }
+.lib .blurb { display: block; font-size: 12px; color: var(--text-muted); }
+
+/* ---------- board ---------- */
+.tabs { display: inline-flex; gap: 2px; margin-left: 8px; }
+.tabs button { border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-muted);
+  padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--text-primary); background: var(--surface-2); }
+.tabs .badge { font-weight: 500; font-size: 11px; color: var(--text-muted); margin-left: 4px; }
+.board-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.board-bar input[type=search] { flex: 1; min-width: 180px; }
+#board-proj { flex: 0 1 300px; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(270px, 1fr); gap: 12px;
+  overflow-x: auto; padding-bottom: 8px; align-items: start; }
+.col { background: color-mix(in srgb, var(--c, var(--other)) 7%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--c, var(--other)) 30%, var(--border)); border-top: 3px solid var(--c, var(--other)); border-radius: 12px; display: flex;
+  flex-direction: column; max-height: calc(100vh - 190px); min-height: 160px; }
+.col.over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; font-size: 13px; font-weight: 600; }
+.col-head .n { font-weight: 600; font-size: 11px; padding: 0 7px; border-radius: 999px;
+  color: color-mix(in srgb, var(--c) 78%, var(--text-primary)); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.col-head { white-space: nowrap; }
+.col-head .hint { font-weight: 400; color: var(--text-muted); font-size: 11px; margin-left: auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; }
+.col-body { overflow-y: auto; overflow-x: hidden; padding: 0 8px 8px; display: grid; gap: 8px; align-content: start; flex: 1; }
+.card2 { background: var(--surface-1); border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px;
+  font-size: 13px; cursor: grab; }
+.card2:active { cursor: grabbing; }
+.card2.dragging { opacity: .4; }
+.card2 { border-left: 3px solid var(--c); }
+.card2.done { border-left-color: var(--good); }
+.doing-pill { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #fff;
+  background: var(--accent); border-radius: 5px; padding: 1px 6px; }
+.card2.done .t { color: var(--text-secondary); }
+.card2 { min-width: 0; overflow-wrap: anywhere; }
+.card2 .t { word-break: break-word; }
+.card2 .d { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+.card2 .d.full { -webkit-line-clamp: unset; }
+.card2 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; font-size: 11px; color: var(--text-muted); }
+.card2 .meta .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.card2 .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; align-items: center; margin-left: auto; }
+.card2 .copy, .card2 select { white-space: nowrap; margin-left: 0; }
+.card2 select { font: inherit; font-size: 11px; padding: 1px 4px; border-radius: 5px; border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-secondary); }
+.card2 .x { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+.card2 .x:hover { color: var(--crit); }
+.col-empty { font-size: 12px; color: var(--text-muted); padding: 10px 4px; text-align: center; }
+[hidden] { display: none !important; }
+.wrap:has(#boardview:not([hidden])) { max-width: none; }
+@media (max-width: 640px) {
+  .tabs { margin-left: 0; }
+  #range { flex-wrap: wrap; max-width: 100%; }
+  .board { grid-auto-columns: minmax(260px, 86vw); }
+  .col { max-height: 70vh; }
+}
+.col-head .dot { width: 9px; height: 9px; border-radius: 50%; padding: 0; margin: 0; display: inline-block; }
+
+/* ---------- brand mark (from the illustration kit: a prompt whose cursor became a pulse) ---------- */
+.brand { display: flex; align-items: center; gap: 10px; }
+.mark { width: 34px; height: 34px; flex: none; border-radius: 9px; background: #10151c; color: #f1f3f6; --s: var(--other); }
+.mark.busy { --s: #f0a24a; } .mark.idle { --s: #5cc27a; } .mark.none { --s: #77818e; }
+.mark .pulse { stroke: var(--s); stroke-dasharray: 40; stroke-dashoffset: 0; }
+.mark.busy .pulse { animation: mark-trace 2.2s ease-in-out infinite; }
+.mark.idle .pulse { animation: mark-breathe 4.4s ease-in-out infinite; }
+@keyframes mark-trace { 0% { stroke-dashoffset: 40; opacity: .3 } 12% { opacity: 1 } 59%, 100% { stroke-dashoffset: 0; opacity: 1 } }
+@keyframes mark-breathe { 0%, 100% { opacity: .55 } 45% { opacity: 1 } }
+.quiet { display: flex; align-items: center; gap: 14px; padding: 6px 0; color: var(--text-muted); font-size: 13px; }
+.quiet svg { width: 120px; height: 28px; flex: none; }
+.quiet b { display: block; color: var(--text-secondary); font-weight: 600; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .mark .pulse { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg class="mark none" id="mark" viewBox="0 0 32 32" role="img" aria-label="Session Pulse"><title id="mark-title">No sessions</title>
+        <path d="M5 11 L10 16 L5 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="pulse" d="M12.5 16 H15 L16.8 13 L19.2 20.5 L21.8 9 L24.2 18 L25.6 16 H28" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>
+        <h1>Session Pulse <span class="sub" style="font-size:13px;font-weight:400">for Claude Code</span></h1>
+        <div class="sub" id="updated">Loading…</div>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="View">
+      <button role="tab" data-v="overview" aria-selected="true">Overview</button><button role="tab" data-v="board" aria-selected="false">Board<span class="badge" id="board-badge"></span></button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="seg" id="range" role="group" aria-label="Date range">
+      <button data-d="1">Today</button><button data-d="7">7d</button><button data-d="30" aria-pressed="true">30d</button><button data-d="90">90d</button><button data-d="0">All</button>
+    </div>
+    <button class="theme" id="theme" title="Toggle theme">Theme</button>
+  </header>
+  <div class="err" id="err"></div>
+  <div class="warn" id="warn"></div>
+
+<div id="overview">
+  <div class="grid kpis" id="kpis"></div>
+
+  <section class="card" style="margin-bottom:14px">
+    <h2>In progress now</h2>
+    <div class="live-list" id="live"></div>
+  </section>
+
+  <div class="grid halves">
+    <section class="card">
+      <div class="chart-head"><h2>To-do</h2><span class="count" id="todo-count"></span><a href="#board" class="count">Open board →</a><div class="spacer"></div>
+        <div class="seg" id="todo-filter" role="group" aria-label="Show">
+          <button data-f="" aria-pressed="true">All</button><button data-f="session">From sessions</button><button data-f="me">Added by me</button>
+        </div></div>
+      <div class="fu-status" id="fu-status"></div>
+      <form class="todo-add" id="todo-form" autocomplete="off">
+        <input id="todo-text" maxlength="500" placeholder="Add a to-do…" aria-label="To-do" required>
+        <input id="todo-proj" maxlength="200" list="proj-list" placeholder="Project (optional)" aria-label="Project">
+        <datalist id="proj-list"></datalist>
+        <button class="btn">Add</button>
+      </form>
+      <ul class="todos" id="todo-list"></ul>
+    </section>
+    <section class="card">
+      <div class="chart-head"><h2>Completed</h2><span class="count" id="done-count"></span></div>
+      <div class="todos" id="done-list"></div>
+    </section>
+  </div>
+
+  <div class="grid two">
+    <section class="card">
+      <div class="chart-head">
+        <h2>Token usage per day</h2><div class="spacer"></div>
+        <div class="seg" id="metric" role="group" aria-label="Token type">
+          <button data-m="output" aria-pressed="true">Output</button><button data-m="input">Input</button><button data-m="cache_write">Cache write</button><button data-m="cache_read">Cache read</button>
+        </div>
+      </div>
+      <div class="legend" id="usage-legend"></div>
+      <div class="chart" id="usage-chart"></div>
+    </section>
+    <section class="card">
+      <div class="chart-head"><h2>Active hours per day</h2></div>
+      <div class="legend"><span class="sub" id="hours-note"></span></div>
+      <div class="chart" id="hours-chart"></div>
+    </section>
+  </div>
+
+  <div class="grid two">
+    <section class="card">
+      <h2>Projects</h2>
+      <div class="scroll"><table id="projects"></table></div>
+    </section>
+    <section class="card">
+      <h2>Starts &amp; exits</h2>
+      <div class="events" id="events"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-bottom:14px">
+    <div class="chart-head"><h2>Get better at Claude Code</h2><span class="count" id="learn-note"></span></div>
+    <div class="strengths" id="strengths"></div>
+    <div class="learn-grid" id="suggestions"></div>
+    <details class="lib" id="library"><summary>All free learning resources</summary><div class="lib-cols" id="lib-cols"></div></details>
+  </section>
+
+  <section class="card">
+    <h2>History</h2>
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Search prompts, projects, session ids…">
+      <select id="state-filter">
+        <option value="">All states</option><option value="live">In progress</option>
+        <option value="exited">Exited</option><option value="closed">Closed (no exit event)</option>
+      </select>
+    </div>
+    <div class="scroll"><table id="history"></table></div>
+  </section>
+</div>
+
+<div id="boardview" hidden>
+  <div class="board-bar">
+    <div class="seg" id="board-by" role="group" aria-label="Columns">
+      <button data-b="kind" aria-pressed="true">By category</button><button data-b="status">By status</button>
+    </div>
+    <select id="board-proj" aria-label="Project"><option value="">All projects</option></select>
+    <input type="search" id="board-q" placeholder="Search to-dos…">
+    <span class="sub" id="board-note"></span>
+  </div>
+  <div class="board" id="board"></div>
+</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const SERIES = 8;
+let DATA = null, RANGE = 30, METRIC = "output", SORT = {k: "start", dir: -1}, OPEN = new Set();
+let modelSlot = {};
+
+// ---------- formatting ----------
+const fmtN = n => n >= 1e9 ? (n/1e9).toFixed(2)+"B" : n >= 1e6 ? (n/1e6).toFixed(1)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(Math.round(n||0));
+const fmtH = h => h >= 10 ? h.toFixed(0)+"h" : h >= 1 ? h.toFixed(1)+"h" : Math.round(h*60)+"m";
+const pad = n => String(n).padStart(2, "0");
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fmtT = iso => { if (!iso) return "—"; const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fmtD = iso => { if (!iso) return "—"; const d = new Date(iso);
+  return d.toLocaleDateString(undefined, {day: "numeric", month: "short"}) + " " + fmtT(iso); };
+const ago = ms => { const s = Math.max(0, (Date.now()-ms)/1000);
+  return s < 60 ? Math.round(s)+"s ago" : s < 3600 ? Math.round(s/60)+"m ago" : s < 86400 ? (s/3600).toFixed(1)+"h ago" : Math.round(s/86400)+"d ago"; };
+const dur = ms => { const m = Math.round(ms/60000); return m < 60 ? m+"m" : Math.floor(m/60)+"h "+pad(m%60)+"m"; };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const shortModel = m => (m||"—").replace(/^claude-/, "");
+const isLive = s => s.state === "busy" || s.state === "idle" || s.state === "running";
+const tokTotal = u => (u.input||0)+(u.output||0)+(u.cache_write||0)+(u.cache_read||0);
+
+function rangeStart() {
+  if (!RANGE) return null;
+  const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - (RANGE-1)); return dkey(d);
+}
+function rangeDays() {
+  const start = rangeStart() || (DATA.sessions.map(s => s.start).filter(Boolean).sort()[0] || "").slice(0,10);
+  const out = [], d = new Date(start + "T00:00:00"), end = new Date();
+  while (dkey(d) <= dkey(end)) { out.push(dkey(d)); d.setDate(d.getDate()+1); }
+  return out;
+}
+const inRange = s => { const r = rangeStart(); return !r || isLive(s) || (s.end || s.start || "").slice(0,10) >= r; };
+
+function color(model) {
+  const slot = modelSlot[model];
+  return slot ? `var(--series-${slot})` : "var(--other)";
+}
+
+// ---------- KPIs ----------
+function renderKpis(sessions) {
+  const r = rangeStart(), days = new Set(rangeDays());
+  let hours = 0, out = 0, all = 0, prompts = 0;
+  for (const s of DATA.sessions) {
+    for (const [d, h] of Object.entries(s.hours_by_day||{})) if (days.has(d)) hours += h;
+    for (const [d, kv] of Object.entries(s.days||{})) if (days.has(d))
+      for (const [k, v] of Object.entries(kv)) { all += v; if (k.endsWith("|output")) out += v; }
+  }
+  sessions.forEach(s => prompts += s.prompts||0);
+  const live = DATA.sessions.filter(isLive), busy = live.filter(s => s.state === "busy").length;
+  const tiles = [
+    ["In progress", live.length, `${busy} working · ${live.length-busy} idle`],
+    ["Sessions", sessions.length, `${prompts} prompts`],
+    ["Active time", fmtH(hours), "30-min activity windows"],
+    ["Output tokens", fmtN(out), "written by Claude"],
+    ["All tokens", fmtN(all), "incl. cache reads"],
+  ];
+  $("#kpis").innerHTML = tiles.map(([l, v, n]) =>
+    `<div class="card kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="note">${n}</div></div>`).join("");
+}
+
+// ---------- live ----------
+function renderLive() {
+  const live = DATA.sessions.filter(isLive).sort((a, b) => (b.live.updatedAt||0) - (a.live.updatedAt||0));
+  if (!live.length) { $("#live").innerHTML = `<div class="quiet"><svg viewBox="0 0 120 28" aria-hidden="true">
+      <path d="M2 14 H44 L50 10 L56 18 L62 6 L68 22 L74 12 L78 14 H118" fill="none" stroke="var(--other)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/></svg>
+      <div><b>No sessions running</b>Quiet until needed. Start <code>claude</code> in a terminal and it shows up here.</div></div>`; return; }
+  $("#live").innerHTML = live.map(s => {
+    const L = s.live, started = L.startedAt || Date.parse(s.start);
+    return `<div class="live">
+      <div class="top"><span class="name" title="${esc(s.cwd)}">${esc(s.project)}</span>
+        <span class="pill ${s.state === "busy" ? "busy" : "idle"}">${s.state === "busy" ? "Working" : "Idle"}</span></div>
+      <div class="meta">
+        <b>Running</b><span>${dur(Date.now()-started)} · since ${fmtT(new Date(started).toISOString())}</span>
+        <b>Last change</b><span>${L.updatedAt ? ago(L.updatedAt) : "—"}</span>
+        <b>Usage</b><span>${fmtN(s.usage.output||0)} out · ${fmtN(tokTotal(s.usage))} total · ${s.prompts} prompts</span>
+        <b>Model</b><span>${esc(shortModel(s.model))} · pid ${L.pid}${L.entrypoint ? " · "+esc(L.entrypoint) : ""}</span>
+      </div>
+      ${s.last_prompt ? `<div class="prompt">“${esc(s.last_prompt)}”</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+// ---------- charts ----------
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v/p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+
+function barChart(el, days, stacks, keys, fmt, tipTitle) {
+  // stacks: [{day, parts: {key: value}}]; keys: ordered series [{k, label, color}]
+  const W = el.clientWidth || 600, H = 220, m = {t: 10, r: 8, b: 24, l: 44};
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const totals = stacks.map(s => keys.reduce((a, k) => a + (s.parts[k.k]||0), 0));
+  const max = niceMax(Math.max(...totals, 0));
+  const bw = iw / days.length, barW = Math.max(2, Math.min(28, bw - 2));
+  const y = v => m.t + ih - (v/max)*ih;
+  let g = "";
+  for (let i = 0; i <= 4; i++) { const v = max*i/4, yy = y(v);
+    g += `<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/>`;
+    g += `<text x="${m.l-6}" y="${yy+4}" text-anchor="end">${fmt(v)}</text>`; }
+  const every = Math.ceil(days.length / Math.max(1, Math.floor(iw/56)));
+  days.forEach((d, i) => { if (i % every) return; const x = m.l + i*bw + bw/2;
+    const dt = new Date(d+"T00:00:00");
+    g += `<text x="${x}" y="${H-6}" text-anchor="middle">${dt.toLocaleDateString(undefined,{day:"numeric",month:"short"})}</text>`; });
+  let bars = "";
+  stacks.forEach((s, i) => {
+    const x = m.l + i*bw + (bw-barW)/2; let acc = 0;
+    const segs = keys.filter(k => s.parts[k.k] > 0);
+    segs.forEach((k, j) => {
+      const v = s.parts[k.k], y0 = y(acc), y1 = y(acc+v); acc += v;
+      const h = Math.max(0, y0 - y1 - (j < segs.length-1 ? 2 : 0));
+      const top = j === segs.length-1, r = top ? Math.min(4, barW/2, h) : 0;
+      const yt = y1 + (j < segs.length-1 ? 0 : 0);
+      bars += top && r > 0
+        ? `<path d="M${x},${yt+h} V${yt+r} Q${x},${yt} ${x+r},${yt} H${x+barW-r} Q${x+barW},${yt} ${x+barW},${yt+r} V${yt+h} Z" fill="${k.color}"/>`
+        : `<rect x="${x}" y="${yt}" width="${barW}" height="${h}" fill="${k.color}"/>`;
+    });
+    bars += `<rect class="hit" data-i="${i}" x="${m.l+i*bw}" y="${m.t}" width="${bw}" height="${ih}" fill="transparent"/>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img">${g}<line x1="${m.l}" x2="${W-m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border)"/>${bars}</svg><div class="tip"></div>`;
+  const tip = el.querySelector(".tip");
+  el.querySelectorAll(".hit").forEach(h => {
+    h.addEventListener("mousemove", ev => {
+      const i = +h.dataset.i, s = stacks[i];
+      const rows = keys.filter(k => s.parts[k.k] > 0).map(k =>
+        `<div class="r"><span><i style="background:${k.color}"></i>${esc(k.label)}</span><b>${fmt(s.parts[k.k])}</b></div>`).join("");
+      tip.innerHTML = `<div class="t">${tipTitle(days[i])}</div>${rows || '<div class="r">Nothing</div>'}${keys.length > 1 && totals[i] ? `<div class="r"><span>Total</span><b>${fmt(totals[i])}</b></div>` : ""}`;
+      tip.style.display = "block";
+      const box = el.getBoundingClientRect(); let x = ev.clientX - box.left + 12;
+      if (x + tip.offsetWidth > box.width) x = ev.clientX - box.left - tip.offsetWidth - 12;
+      tip.style.left = x + "px"; tip.style.top = Math.max(0, ev.clientY - box.top - 20) + "px";
+      h.setAttribute("fill", "color-mix(in srgb, var(--text-primary) 5%, transparent)");
+    });
+    h.addEventListener("mouseleave", () => { tip.style.display = "none"; h.setAttribute("fill", "transparent"); });
+  });
+}
+
+const dayTitle = d => new Date(d+"T00:00:00").toLocaleDateString(undefined, {weekday: "short", day: "numeric", month: "short"});
+
+function renderUsage() {
+  const days = rangeDays(), dayset = new Set(days), per = {}, used = {};
+  for (const s of DATA.sessions) for (const [d, kv] of Object.entries(s.days||{})) {
+    if (!dayset.has(d)) continue;
+    for (const [k, v] of Object.entries(kv)) { const [model, typ] = k.split("|");
+      if (typ !== METRIC) continue;
+      const key = modelSlot[model] ? model : "other";
+      (per[d] ||= {})[key] = (per[d][key]||0) + v; used[key] = (used[key]||0) + v; } }
+  const keys = Object.keys(modelSlot).filter(m => used[m]).sort((a, b) => modelSlot[a]-modelSlot[b])
+    .map(m => ({k: m, label: shortModel(m), color: color(m)}));
+  if (used.other) keys.push({k: "other", label: "Other", color: "var(--other)"});
+  $("#usage-legend").innerHTML = keys.map(k => `<span><i style="background:${k.color}"></i>${esc(k.label)}</span>`).join("")
+    || `<span>No usage in this range</span>`;
+  barChart($("#usage-chart"), days, days.map(d => ({day: d, parts: per[d]||{}})), keys, fmtN, dayTitle);
+}
+
+function renderHours() {
+  const days = rangeDays(), per = {};
+  let tot = 0;
+  for (const s of DATA.sessions) for (const [d, h] of Object.entries(s.hours_by_day||{})) { per[d] = (per[d]||0)+h; }
+  days.forEach(d => tot += per[d]||0);
+  $("#hours-note").textContent = `${fmtH(tot)} in range · avg ${fmtH(tot/Math.max(1, days.length))}/day`;
+  barChart($("#hours-chart"), days, days.map(d => ({day: d, parts: {h: per[d]||0}})),
+    [{k: "h", label: "Active", color: "var(--series-1)"}], v => fmtH(v), dayTitle);
+}
+
+// ---------- projects ----------
+function renderProjects(sessions) {
+  const days = new Set(rangeDays()), P = {};
+  for (const s of DATA.sessions) {
+    let h = 0, out = 0;
+    for (const [d, v] of Object.entries(s.hours_by_day||{})) if (days.has(d)) h += v;
+    for (const [d, kv] of Object.entries(s.days||{})) if (days.has(d))
+      for (const [k, v] of Object.entries(kv)) if (k.endsWith("|output")) out += v;
+    if (!h && !out && !sessions.includes(s)) continue;
+    const p = P[s.project] ||= {project: s.project, n: 0, h: 0, out: 0, last: ""};
+    if (sessions.includes(s)) p.n++;
+    p.h += h; p.out += out; if ((s.end||"") > p.last) p.last = s.end||"";
+  }
+  const rows = Object.values(P).sort((a, b) => b.h - a.h).slice(0, 12);
+  const maxH = Math.max(...rows.map(r => r.h), 0.01);
+  $("#projects").innerHTML = `<thead><tr><th>Project</th><th class="num">Sessions</th><th class="num">Active</th><th class="num">Output</th><th class="num">Last</th></tr></thead><tbody>` +
+    (rows.map(r => `<tr><td class="proj" title="${esc(r.project)}">${esc(r.project)}<div class="bar-mini"><i style="width:${(r.h/maxH*100).toFixed(1)}%"></i></div></td>
+      <td class="num">${r.n}</td><td class="num">${fmtH(r.h)}</td><td class="num">${fmtN(r.out)}</td><td class="num">${fmtD(r.last)}</td></tr>`).join("")
+     || `<tr><td colspan="5" class="empty">No activity in this range.</td></tr>`) + "</tbody>";
+}
+
+// ---------- events ----------
+const REASONS = {clear: "/clear", logout: "logout", prompt_input_exit: "exited (Ctrl+D / /exit)", other: "closed",
+  startup: "started", resume: "resumed", compact: "compacted"};
+function renderEvents() {
+  const r = rangeStart();
+  const evs = DATA.events.filter(e => !r || dkey(new Date(e.ts)) >= r).slice().reverse();
+  if (!evs.length) {
+    $("#events").innerHTML = `<div class="empty">No start/exit events yet. They are recorded once <code>sessionpulse install</code> has added the hooks.</div>`;
+    return;
+  }
+  $("#events").innerHTML = evs.map(e => {
+    const end = e.event === "SessionEnd";
+    return `<div class="ev"><span class="when">${fmtD(e.ts)}</span>
+      <span class="pill ${end ? "exited" : "idle"}">${end ? "Exit" : "Start"}</span>
+      <span class="what" title="${esc(e.session)}">${esc(e.project)} · ${esc(REASONS[e.reason] || e.reason || "")}</span></div>`;
+  }).join("");
+}
+
+// ---------- history ----------
+const STATE_LABEL = {busy: "Working", idle: "Idle", running: "Running", exited: "Exited", closed: "Closed"};
+function renderHistory(sessions) {
+  const q = $("#q").value.trim().toLowerCase(), sf = $("#state-filter").value;
+  let rows = sessions.filter(s => {
+    if (sf === "live" && !isLive(s)) return false;
+    if (sf && sf !== "live" && s.state !== sf) return false;
+    if (!q) return true;
+    return [s.project, s.first_prompt, s.last_prompt, s.id, s.title, s.cwd].some(v => (v||"").toLowerCase().includes(q));
+  });
+  const val = {start: s => s.start||"", end: s => s.end||"", project: s => s.project, hours: s => s.hours||0,
+    prompts: s => s.prompts||0, out: s => s.usage.output||0, total: s => tokTotal(s.usage), state: s => s.state};
+  rows.sort((a, b) => { const x = val[SORT.k](a), y = val[SORT.k](b); return (x > y ? 1 : x < y ? -1 : 0) * SORT.dir; });
+  const cols = [["state","State",""],["start","Started",""],["end","Last activity",""],["project","Project",""],
+    [null,"First prompt",""],["hours","Active","num"],["prompts","Prompts","num"],["out","Output","num"],["total","All tokens","num"]];
+  const head = `<thead><tr>${cols.map(([k, l, c]) => `<th class="${c}" ${k ? `data-k="${k}"` : ""}>${l}${SORT.k === k ? (SORT.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("")}</tr></thead>`;
+  const body = rows.slice(0, 300).map(s => {
+    const st = isLive(s) ? s.state : s.state;
+    let html = `<tr class="row" data-id="${s.id}">
+      <td><span class="pill ${st === "running" ? "idle" : st}">${STATE_LABEL[st] || st}</span></td>
+      <td>${fmtD(s.start)}</td><td>${fmtD(s.end)}</td>
+      <td class="proj" title="${esc(s.cwd)}">${esc(s.project)}</td>
+      <td class="prompt" title="${esc(s.first_prompt)}">${esc(s.title || s.first_prompt || "—")}</td>
+      <td class="num">${fmtH(s.hours||0)}</td><td class="num">${s.prompts||0}</td>
+      <td class="num">${fmtN(s.usage.output||0)}</td><td class="num">${fmtN(tokTotal(s.usage))}</td></tr>`;
+    if (OPEN.has(s.id)) {
+      const u = s.usage, exit = s.state === "exited"
+        ? `${esc(REASONS[s.exit_reason] || s.exit_reason)} at ${fmtD(s.exit_at)}`
+        : s.state === "closed" ? "No exit event recorded (closed before the exit hook existed, or the terminal was killed)" : "Still running";
+      html += `<tr class="detail"><td colspan="9"><dl>
+        <dt>Session</dt><dd><code>${s.id}</code></dd>
+        <dt>Resume</dt><dd><code>cd ${esc(s.cwd)} &amp;&amp; claude --resume ${s.id}</code><button class="copy" data-copy="cd ${esc(s.cwd)} && claude --resume ${s.id}">Copy</button></dd>
+        <dt>Directory</dt><dd>${esc(s.cwd)}</dd>
+        <dt>Exit</dt><dd>${exit}</dd>
+        <dt>Model</dt><dd>${esc(shortModel(s.model))}${s.version ? " · Claude Code " + esc(s.version) : ""}</dd>
+        <dt>Tokens</dt><dd>input ${fmtN(u.input||0)} · output ${fmtN(u.output||0)} · cache write ${fmtN(u.cache_write||0)} · cache read ${fmtN(u.cache_read||0)}</dd>
+        <dt>Work</dt><dd>${s.tools||0} tool calls · ${s.agents||0} subagents</dd>
+        <dt>First prompt</dt><dd>${esc(s.first_prompt || "—")}</dd>
+        <dt>Last prompt</dt><dd>${esc(s.last_prompt || "—")}</dd>
+      </dl></td></tr>`;
+    }
+    return html;
+  }).join("");
+  $("#history").innerHTML = head + `<tbody>${body || `<tr><td colspan="9" class="empty">No sessions match.</td></tr>`}</tbody>`;
+}
+
+$("#history").addEventListener("click", ev => {
+  const th = ev.target.closest("th[data-k]");
+  if (th) { const k = th.dataset.k; SORT = {k, dir: SORT.k === k ? -SORT.dir : -1}; render(); return; }
+  const cp = ev.target.closest(".copy");
+  if (cp) { navigator.clipboard?.writeText(cp.dataset.copy); cp.textContent = "Copied"; return; }
+  const tr = ev.target.closest("tr.row");
+  if (tr) { OPEN.has(tr.dataset.id) ? OPEN.delete(tr.dataset.id) : OPEN.add(tr.dataset.id); render(); }
+});
+
+// ---------- to-dos ----------
+const dayLabel = iso => { const d = dkey(new Date(iso)), t = new Date(); const today = dkey(t);
+  t.setDate(t.getDate()-1); return d === today ? "Today" : d === dkey(t) ? "Yesterday" : dayTitle(d); };
+const KIND = {external: "Outside work", checklist: "Checklist", decision: "Decide", waiting: "Waiting on", task: "Later"};
+const todoRow = (i, done, grouped) => {
+  const born = i.session_at || i.created;
+  const from = i.source === "session" && i.session
+    ? `<span class="from">From a session on ${esc(fmtD(i.session_at || i.created))}<button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens this session">Copy resume</button></span>` : "";
+  const auto = done && i.closed_by ? `<span class="from">Closed automatically by a later session. Untick if that's wrong.</span>` : "";
+  return `<li class="todo${done ? " is-done" : ""}">
+  <input type="checkbox" data-id="${esc(i.id)}" ${done ? "checked" : ""} aria-label="${done ? "Mark not done" : "Mark done"}">
+  <span class="txt">${i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind] || i.kind)}</span>` : ""}${esc(i.text)}${i.project && !grouped ? `<span class="tag">${esc(i.project)}</span>` : ""}
+    ${i.detail && !done ? `<span class="detail">${esc(i.detail)}</span>` : ""}${done ? "" : from}${auto}</span>
+  <span class="when" title="${done ? "Done " : i.session_at ? "Discussed " : "Added "}${esc(fmtD(done ? i.done_at : born))}">${done ? fmtT(i.done_at) : ago(Date.parse(born))}</span>
+  <button class="x" data-del="${esc(i.id)}" title="${i.source === "session" ? "Dismiss (won't be picked up again)" : "Delete"}" aria-label="Delete">×</button></li>`;
+};
+
+function renderTodos() {
+  const items = DATA.todos || [], r = rangeStart();
+  const open = items.filter(i => !i.done_at && (!TODOF || (TODOF === "session") === (i.source === "session")))
+    .sort((a, b) => (a.source === "session") - (b.source === "session") || a.created.localeCompare(b.created));
+  const F = DATA.followups || {};
+  $("#fu-status").innerHTML = !F.enabled
+    ? `Follow-ups from sessions are off. Add <code>followups = true</code> to <code>~/.config/sessionpulse/config.toml</code>, or run <code>sessionpulse followups</code> once.`
+    : F.last_error ? `Couldn't read sessions for follow-ups: ${esc(F.last_error)}`
+    : F.running ? "Reading quiet sessions for follow-ups…"
+    : `Follow-ups are picked up from sessions after 20 quiet minutes${F.last_run ? ` · last checked ${ago(Date.parse(F.last_run))}` : ""}.`;
+  const done = items.filter(i => i.done_at && (!r || dkey(new Date(i.done_at)) >= r))
+    .sort((a, b) => b.done_at.localeCompare(a.done_at));
+  $("#todo-count").textContent = open.length ? `${open.length} open` : "";
+  // Group by project, newest activity first. Groups with something from the last 3 days start open.
+  const G = {};
+  for (const i of open) (G[i.project || ""] ||= []).push(i);
+  const newest = g => g.reduce((m, i) => (i.session_at || i.created) > m ? (i.session_at || i.created) : m, "");
+  const recent = new Date(Date.now() - 3*86400e3).toISOString();
+  const groups = Object.entries(G).sort((a, b) => newest(b[1]).localeCompare(newest(a[1])));
+  $("#todo-list").innerHTML = groups.map(([p, g]) => {
+    const isOpen = GOPEN.has(p) ? GOPEN.get(p) : new Date(newest(g)).toISOString() >= recent;
+    const kinds = {}; g.forEach(i => { if (i.kind) kinds[i.kind] = (kinds[i.kind]||0) + 1; });
+    return `<li><details class="pgroup" data-p="${esc(p)}" ${isOpen ? "open" : ""}><summary>${esc(p || "No project")}
+      <span class="n">${g.length} · ${esc(ago(Date.parse(newest(g))))}</span>
+      <span class="kinds">${Object.entries(kinds).map(([k, n]) => `<span class="kindtag k-${esc(k)}" title="${esc(KIND[k] || k)}">${n}</span>`).join("")}</span>
+      <button class="dismiss-all" data-ids="${esc(g.map(i => i.id).join(","))}" title="Remove every open item in this group">Dismiss all</button></summary>
+      <ul>${g.slice().sort((a, b) => (b.session_at || b.created).localeCompare(a.session_at || a.created)).map(i => todoRow(i, false, true)).join("")}</ul></details></li>`;
+  }).join("")
+    || `<li class="empty">${TODOF === "session" ? "No open follow-ups from your sessions." : "Nothing on the list. Add what you plan to get done."}</li>`;
+  $("#done-count").textContent = `${done.length} ${RANGE ? (RANGE === 1 ? "today" : `in ${RANGE} days`) : "in total"}`;
+  let html = "", last = "";
+  for (const i of done) { const d = dayLabel(i.done_at);
+    if (d !== last) { if (last) html += "</ul>"; html += `<div class="done-day">${esc(d)}</div><ul class="todos">`; last = d; }
+    html += todoRow(i, true); }
+  $("#done-list").innerHTML = html ? html + "</ul>" : `<div class="empty">Tick a to-do and it shows up here.</div>`;
+  const projects = [...new Set(DATA.sessions.map(s => s.project).filter(p => p && p !== "?"))].sort();
+  $("#proj-list").innerHTML = projects.map(p => `<option value="${esc(p)}">`).join("");
+}
+
+async function todoOp(op) {
+  try {
+    const r = await fetch("/api/todos", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(op)});
+    if (r.status === 403) { location.reload(); return false; }
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+    DATA.todos = await r.json(); render(); return true;
+  } catch (e) {
+    $("#err").textContent = "Couldn't save the to-do: " + e.message; $("#err").style.display = "block"; return false;
+  }
+}
+$("#todo-form").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const text = $("#todo-text").value.trim(); if (!text) return;
+  if (await todoOp({op: "add", text, project: $("#todo-proj").value.trim()})) { $("#todo-text").value = ""; $("#todo-text").focus(); }
+});
+let TODOF = "";
+const GOPEN = new Map();  // groups you opened or closed yourself; kept across refreshes
+$("#todo-list").addEventListener("toggle", ev => {
+  const d = ev.target.closest?.("details.pgroup"); if (d) GOPEN.set(d.dataset.p, d.open);
+}, true);
+document.querySelectorAll("#todo-filter button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#todo-filter button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  TODOF = b.dataset.f; renderTodos();
+}));
+for (const id of ["#todo-list", "#done-list"]) $(id).addEventListener("click", ev => {
+  const cp = ev.target.closest(".copy");
+  if (cp) { navigator.clipboard?.writeText(cp.dataset.copy); cp.textContent = "Copied"; return; }
+  const da = ev.target.closest(".dismiss-all");
+  if (da) {  // two clicks, no browser dialog
+    ev.preventDefault();
+    const ids = da.dataset.ids.split(",");
+    if (!da.classList.contains("armed")) { da.classList.add("armed"); da.textContent = `Click again to dismiss ${ids.length}`;
+      setTimeout(() => { da.classList.remove("armed"); da.textContent = "Dismiss all"; }, 4000); return; }
+    return todoOp({op: "delete", ids});
+  }
+  const cb = ev.target.closest("input[type=checkbox]");
+  if (cb) return todoOp({op: cb.checked ? "done" : "undo", id: cb.dataset.id});
+  const x = ev.target.closest("[data-del]");
+  if (x) todoOp({op: "delete", id: x.dataset.del});
+});
+
+// ---------- learning ----------
+const LEVELS = [["start", "Start here"], ["better", "Use it better"], ["advanced", "Go further"], ["current", "Stay current"]];
+const link = r => `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a><span class="kind">${esc(r.kind)}</span>`;
+let learnKey = "";
+function renderLearn() {
+  const L = DATA.learn; if (!L) return;
+  const key = JSON.stringify([L.sessions, L.suggestions, L.strengths]);
+  if (key === learnKey) return;  // don't redraw every refresh, or an open <details> would flicker
+  learnKey = key;
+  const lib = Object.fromEntries(L.library.map(r => [r.id, r]));
+  $("#learn-note").textContent = `based on your last ${L.window_days} days · ${L.sessions} sessions`;
+  $("#strengths").innerHTML = L.strengths.length
+    ? `<span>Already doing well:</span>` + L.strengths.map(t => `<span class="pill idle">${esc(t)}</span>`).join("") : "";
+  $("#suggestions").innerHTML = L.suggestions.map(s => `<div class="tip-card"><h3>${esc(s.title)}</h3><p>${esc(s.why)}</p>
+    <ul>${s.links.filter(id => lib[id]).map(id => `<li>${link(lib[id])}</li>`).join("")}</ul></div>`).join("")
+    || (L.sessions < 5 ? `<div class="empty">Personal suggestions appear after a few more sessions. Meanwhile, the list below is a good place to start.</div>`
+                       : `<div class="empty">Nothing stands out in your recent sessions. The list below has more to explore.</div>`);
+  if (!L.suggestions.length) $("#library").open = true;
+  $("#lib-cols").innerHTML = LEVELS.map(([lv, name]) => {
+    const rs = L.library.filter(r => r.level === lv);
+    return rs.length ? `<div><h3>${name}</h3><ul>${rs.map(r => `<li>${link(r)}<span class="blurb">${esc(r.blurb)}</span></li>`).join("")}</ul></div>` : "";
+  }).join("");
+}
+
+// ---------- board ----------
+const COLS = {
+  kind: [["decision", "Decide", "choices waiting on you"], ["external", "Outside work", "send, call, sign, visit"],
+         ["waiting", "Waiting on", "someone owes you"], ["checklist", "Checklist", "audit and verify"],
+         ["task", "Later", "for a future session"], ["mine", "Added by me", ""], ["done", "Done", ""]],
+  status: [["todo", "To do", ""], ["doing", "Doing", "what you're on now"], ["done", "Done", ""]],
+};
+let BY = "kind", DRAG = null;
+const colOf = i => i.done_at ? "done" : BY === "status" ? (i.doing ? "doing" : "todo") : (i.kind || "mine");
+function moveOp(i, col) {
+  if (col === "done") return {op: "set", id: i.id, done: true};
+  const op = {op: "set", id: i.id, done: false};
+  if (BY === "status") op.doing = col === "doing";
+  else op.kind = col === "mine" ? null : col;
+  return op;
+}
+const card = i => {
+  const born = i.session_at || i.created, cols = COLS[BY], here = colOf(i);
+  return `<div class="card2 k-${esc(i.kind || "mine")}${i.doing && !i.done_at ? " doing" : ""}${i.done_at ? " done" : ""}" draggable="true" data-id="${esc(i.id)}">
+    <div class="t">${BY === "status" && i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind])}</span>` : ""}${esc(i.text)}</div>
+    ${i.detail ? `<div class="d" title="Click to expand">${esc(i.detail)}</div>` : ""}
+    <div class="meta">${i.doing && !i.done_at && BY === "kind" ? `<span class="doing-pill">Doing</span>` : ""}${i.project ? `<span class="tag" title="${esc(i.project)}">${esc(i.project.split("/").pop())}</span>` : ""}
+      <span title="${i.done_at ? "Done " + esc(fmtD(i.done_at)) : (i.session_at ? "Discussed " : "Added ") + esc(fmtD(born))}">${i.done_at ? "done " + ago(Date.parse(i.done_at)) : ago(Date.parse(born))}</span>
+      ${i.closed_by && i.done_at ? `<span title="A later session showed this was done">· auto</span>` : ""}
+      <span class="acts">${i.session && !i.done_at ? `<button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens the session this came from">Resume</button>` : ""}
+        <select data-move="${esc(i.id)}" aria-label="Move to"><option value="">Move…</option>${cols.filter(c => c[0] !== here).map(c => `<option value="${c[0]}">${c[1]}</option>`).join("")}</select>
+        <button class="x" data-del="${esc(i.id)}" title="${i.source === "session" ? "Dismiss (won't be picked up again)" : "Delete"}" aria-label="Delete">×</button></span>
+    </div></div>`;
+};
+
+function renderBoard() {
+  if (!DATA || DRAG || $("#boardview").hidden) return;
+  if (document.activeElement?.matches?.("#board select")) return;  // don't yank a menu that's open
+  const items = DATA.todos || [], r = rangeStart(), proj = $("#board-proj").value, q = $("#board-q").value.trim().toLowerCase();
+  const projects = [...new Set(items.filter(i => !i.done_at).map(i => i.project).filter(Boolean))].sort();
+  const sel = $("#board-proj");
+  const opts = `<option value="">All projects</option>` + projects.map(p => `<option value="${esc(p)}"${p === proj ? " selected" : ""}>${esc(p)} (${items.filter(i => !i.done_at && i.project === p).length})</option>`).join("");
+  if (sel.dataset.sig !== opts) { sel.innerHTML = opts; sel.dataset.sig = opts; sel.value = projects.includes(proj) ? proj : ""; }
+  const shown = items.filter(i => (!proj || i.project === proj)
+    && (!q || [i.text, i.detail, i.project].some(v => (v||"").toLowerCase().includes(q)))
+    && (!i.done_at || !r || dkey(new Date(i.done_at)) >= r));
+  const by = {}; for (const i of shown) (by[colOf(i)] ||= []).push(i);
+  const when = i => i.done_at || i.session_at || i.created;
+  $("#board").innerHTML = COLS[BY].map(([k, label, hint]) => {
+    const list = (by[k] || []).sort((a, b) => when(b).localeCompare(when(a)));
+    const cap = k === "done" ? 150 : 400;
+    return `<section class="col k-${k}" data-col="${k}"><div class="col-head"><span class="kindtag dot k-${k}"></span>${label}<span class="n">${list.length}</span>${hint ? `<span class="hint">${hint}</span>` : ""}</div>
+      <div class="col-body">${list.slice(0, cap).map(card).join("") || `<div class="col-empty">${k === "done" ? "Drop a card here when it's done" : "Nothing here"}</div>`}
+      ${list.length > cap ? `<div class="col-empty">+${list.length - cap} more; narrow it with the project filter</div>` : ""}</div></section>`;
+  }).join("");
+  const open = items.filter(i => !i.done_at).length;
+  $("#board-note").textContent = `${open} open · Done shows ${RANGE ? (RANGE === 1 ? "today" : `the last ${RANGE} days`) : "everything"} (change it top right) · drag cards between columns`;
+}
+
+function setView(v) {
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === v));
+  $("#overview").hidden = v !== "overview"; $("#boardview").hidden = v !== "board";
+  if (location.hash !== (v === "board" ? "#board" : "") ) history.replaceState(null, "", v === "board" ? "#board" : location.pathname);
+  render();
+}
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => setView(b.dataset.v)));
+addEventListener("hashchange", () => setView(location.hash === "#board" ? "board" : "overview"));
+document.querySelectorAll("#board-by button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#board-by button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  BY = b.dataset.b; try { localStorage.setItem("boardBy", BY); } catch {} renderBoard();
+}));
+$("#board-proj").addEventListener("change", renderBoard);
+$("#board-q").addEventListener("input", renderBoard);
+
+const B = $("#board");
+B.addEventListener("dragstart", ev => { const c = ev.target.closest(".card2"); if (!c) return;
+  DRAG = c.dataset.id; c.classList.add("dragging"); ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", DRAG); });
+B.addEventListener("dragend", () => { DRAG = null; B.querySelectorAll(".dragging,.over").forEach(e => e.classList.remove("dragging", "over")); renderBoard(); });
+B.addEventListener("dragover", ev => { const col = ev.target.closest(".col"); if (!col || !DRAG) return;
+  ev.preventDefault(); B.querySelectorAll(".col.over").forEach(e => e !== col && e.classList.remove("over")); col.classList.add("over"); });
+B.addEventListener("drop", ev => { const col = ev.target.closest(".col"); if (!col || !DRAG) return; ev.preventDefault();
+  const i = (DATA.todos || []).find(t => t.id === DRAG); const to = col.dataset.col; DRAG = null;
+  B.querySelectorAll(".over").forEach(e => e.classList.remove("over"));
+  if (i && colOf(i) !== to) todoOp(moveOp(i, to)); else renderBoard(); });
+B.addEventListener("change", ev => { const s = ev.target.closest("select[data-move]"); if (!s || !s.value) return;
+  const i = (DATA.todos || []).find(t => t.id === s.dataset.move); s.blur(); if (i) todoOp(moveOp(i, s.value)); });
+B.addEventListener("click", ev => {
+  const cp = ev.target.closest(".copy");
+  if (cp) { navigator.clipboard?.writeText(cp.dataset.copy); cp.textContent = "Copied"; return; }
+  const d = ev.target.closest(".d"); if (d) { d.classList.toggle("full"); return; }
+  const x = ev.target.closest("[data-del]"); if (x) todoOp({op: "delete", id: x.dataset.del});
+});
+
+// ---------- wiring ----------
+function render() {
+  if (!DATA) return;
+  const open = (DATA.todos || []).filter(i => !i.done_at).length;
+  $("#board-badge").textContent = open ? open : "";
+  if (!$("#boardview").hidden) return renderBoard();
+  const sessions = DATA.sessions.filter(inRange);
+  renderKpis(sessions); renderLive(); renderTodos(); renderUsage(); renderHours(); renderProjects(sessions); renderEvents(); renderLearn(); renderHistory(sessions);
+}
+
+async function load() {
+  try {
+    const r = await fetch("/api/data", {cache: "no-store"});
+    if (r.status === 403) { location.reload(); return; }
+    DATA = await r.json();
+    const w = DATA.health?.warnings || [];
+    $("#warn").innerHTML = w.length ? `<b>Data warnings</b><ul>${w.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+    $("#warn").style.display = w.length ? "block" : "none";
+    if (DATA.refresh && DATA.refresh * 1000 !== PERIOD) { PERIOD = DATA.refresh * 1000; clearInterval(TIMER); TIMER = setInterval(load, PERIOD); }
+    // Colour follows the model: slots go out in order of first use and never move.
+    const first = {};
+    for (const s of DATA.sessions) for (const [d, kv] of Object.entries(s.days||{}))
+      for (const k of Object.keys(kv)) { const m = k.split("|")[0]; if (!first[m] || d < first[m]) first[m] = d; }
+    Object.keys(first).sort((a, b) => first[a].localeCompare(first[b]) || a.localeCompare(b))
+      .forEach((m, i) => { if (i < SERIES) modelSlot[m] = i + 1; });
+    const L = DATA.sessions.filter(isLive), st = !L.length ? "none" : L.some(x => x.state === "busy") ? "busy" : "idle";
+    $("#mark").setAttribute("class", "mark " + st);
+    $("#mark-title").textContent = {none: "No sessions", busy: "Claude is working", idle: "All sessions idle"}[st];
+    $("#err").style.display = "none";
+    $("#updated").textContent = `Updated ${new Date().toLocaleTimeString()} · refreshes every ${PERIOD/1000}s · ${DATA.sessions.length} sessions on record`;
+    render();
+  } catch (e) {
+    $("#err").innerHTML = "Can't reach the dashboard server. Start it with <code>sessionpulse tray</code> or <code>sessionpulse serve</code>.";
+    $("#err").style.display = "block";
+  }
+}
+
+document.querySelectorAll("#range button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#range button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  RANGE = +b.dataset.d; try { localStorage.setItem("range", RANGE); } catch {} render();
+}));
+document.querySelectorAll("#metric button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#metric button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  METRIC = b.dataset.m; render();
+}));
+$("#q").addEventListener("input", render);
+$("#state-filter").addEventListener("change", render);
+$("#theme").addEventListener("click", () => {
+  const cur = document.documentElement.dataset.theme
+    || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+  try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {}
+  render();
+});
+try {
+  const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t;
+  const r = localStorage.getItem("range");
+  if (r !== null) { RANGE = +r; document.querySelectorAll("#range button").forEach(x => x.setAttribute("aria-pressed", x.dataset.d === r)); }
+} catch {}
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+try { const b = localStorage.getItem("boardBy"); if (b && COLS[b]) { BY = b;
+  document.querySelectorAll("#board-by button").forEach(x => x.setAttribute("aria-pressed", x.dataset.b === b)); } } catch {}
+if (location.hash === "#board") { $("#overview").hidden = true; $("#boardview").hidden = false;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === "board")); }
+let PERIOD = 5000, TIMER = setInterval(load, PERIOD);
+load();
+</script>
+</body>
+</html>

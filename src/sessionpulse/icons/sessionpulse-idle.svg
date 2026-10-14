@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+  <!-- Session Pulse mark: a prompt whose cursor became a pulse line (from the illustration kit) -->
+  <path d="M2.6 7.2 L6.4 11 L2.6 14.8" fill="none" stroke="#eeeeee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8.4 11 H10.2 L11.6 8.6 L13.4 14.6 L15.4 5.4 L17.2 12.6 L18.2 11 H20.2" fill="none" stroke="#5cc27a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
