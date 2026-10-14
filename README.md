@@ -18,7 +18,7 @@ See every session at a glance, and never lose track of what a session left for y
 
 ### See it in action (1 minute)
 
-https://github.com/user-attachments/assets/a1936f37-17d0-4510-aca5-a80febc0d7ad
+https://github.com/user-attachments/assets/ba0b1bb5-c1b3-4b1a-816a-23b161823a6a
 
 <sub>Made-up data throughout. Re-record it with <code>tools/showcase/run.sh</code>.</sub>
 
