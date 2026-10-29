@@ -1,0 +1,20 @@
+{
+ "about": "An idea the user turned down, next to one real task for later.",
+ "sessions": [{"project": "home/recipe-api", "turns": [
+  ["user", "The /recipes endpoint takes 900 ms. Why?"],
+  ["claude", "The handler runs one query per recipe to load its tags (an N+1 pattern). I changed it to a single join, and it now takes about 80 ms locally. Another option on top would be a Redis cache in front of the endpoint."],
+  ["user", "No Redis, I don't want another service to run. The join is enough."],
+  ["claude", "Agreed, no cache. The join fix is committed."],
+  ["user", "Next time remind me to write the API docs for the new /recipes/search endpoint, there are none yet."],
+  ["claude", "Noted: the /recipes/search endpoint has no docs yet. That is open for a later session."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Write the API docs for /recipes/search", "match": [["doc"], ["search"]]}
+  ],
+  "not_open": [
+   {"label": "Add a Redis cache (rejected)", "match": [["redis", "cache"]]},
+   {"label": "Fix the N+1 query (done)", "match": [["n+1", "join", "query"]]}
+  ]
+ }
+}

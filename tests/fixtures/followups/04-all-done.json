@@ -1,0 +1,20 @@
+{
+ "about": "Everything planned was finished in the session: nothing should be added.",
+ "sessions": [{"project": "tools/csv-tidy", "turns": [
+  ["user", "Three things today: 1) add a --delimiter option, 2) fix the crash on empty files, 3) update the README usage section."],
+  ["claude", "Starting with --delimiter: added the option with ',' as the default, plus tests for ';' and tab."],
+  ["claude", "The empty-file crash came from reading the first row unconditionally. It now prints 'empty file, nothing to do' and exits 0. Added a test."],
+  ["user", "Good. README next."],
+  ["claude", "Updated the README usage section with the new --delimiter option and an example for semicolon files. All 23 tests pass."],
+  ["user", "Perfect, all three done. Thanks!"],
+  ["claude", "You're welcome. All three items are finished and committed."]
+ ]}],
+ "expect": {
+  "open": [],
+  "not_open": [
+   {"label": "Add a --delimiter option (done)", "match": [["delimiter"]]},
+   {"label": "Fix the crash on empty files (done)", "match": [["empty"]]},
+   {"label": "Update the README (done)", "match": [["readme"]]}
+  ]
+ }
+}

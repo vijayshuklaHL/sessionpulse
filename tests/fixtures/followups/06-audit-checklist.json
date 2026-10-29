@@ -1,0 +1,20 @@
+{
+ "about": "A security review that ends with a checklist the user goes through later.",
+ "sessions": [{"project": "work/kiosk-app", "turns": [
+  ["user", "Do a quick security review of the kiosk app setup before the shop opens next month."],
+  ["claude", "From the repo and the deploy notes, three things need a person to check them:\n1. The shop router still uses the default admin password (the deploy notes say 'change later').\n2. Port 22 is open to the internet on the kiosk box; it should only accept the office IP.\n3. There are 3 open dependency alerts on the repo, two of them high severity.\nI fixed what is in the code: the kiosk session now times out after 2 minutes idle, and debug mode is off in the production config."],
+  ["user", "Thanks. I'll go through those three tomorrow at the shop."],
+  ["claude", "Good. The code fixes are committed; the three checks above are yours."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Change the router admin password", "match": [["router"], ["password"]]},
+   {"label": "Restrict port 22 to the office IP", "match": [["22", "ssh"]]},
+   {"label": "Review the 3 dependency alerts", "match": [["dependenc", "alert", "dependabot"]]}
+  ],
+  "not_open": [
+   {"label": "Add an idle timeout (done)", "match": [["timeout", "time out", "idle"]]},
+   {"label": "Turn off debug mode (done)", "match": [["debug"]]}
+  ]
+ }
+}

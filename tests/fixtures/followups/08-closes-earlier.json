@@ -1,0 +1,31 @@
+{
+ "about": "A later session finishes one earlier to-do (it should be closed) and leaves another open (it should stay, and not be added again).",
+ "seed": [
+  {"id": "a1", "text": "Fix the broken image upload on recipe pages", "project": "home/recipe-site", "kind": "task"},
+  {"id": "a2", "text": "Add a sitemap.xml for the recipe pages", "project": "home/recipe-site", "kind": "task"},
+  {"id": "a3", "text": "Ask Marco for the dessert photos", "project": "home/recipe-site", "kind": "waiting"}
+ ],
+ "sessions": [{"project": "home/recipe-site", "turns": [
+  ["user", "Image upload on recipe pages is broken again, uploads over 2 MB fail."],
+  ["claude", "The upload handler had a 2 MB limit hard-coded, separate from the 10 MB limit in the config. I removed the hard-coded value so it uses the config. I tested a 6 MB photo and it uploads and shows on the recipe page."],
+  ["user", "Works for me too. The sitemap still isn't there, but not today."],
+  ["claude", "Ok, I left the sitemap. The upload fix is committed."],
+  ["user", "I'll deploy the upload fix to production tonight."],
+  ["claude", "Sounds good. Remember to clear the CDN cache after the deploy so old error pages don't stick."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Deploy the upload fix to production", "match": [["deploy"]], "unless": ["cdn", "cache"]}
+  ],
+  "ok": [
+   {"label": "Clear the CDN cache after the deploy", "match": [["cdn", "cache"]]}
+  ],
+  "not_open": [
+   {"label": "Fix the image upload (done)", "match": [["upload"], ["fix", "broken", "limit"]], "unless": ["deploy"]},
+   {"label": "Sitemap (already on the list)", "match": [["sitemap"]]},
+   {"label": "Marco's photos (already on the list)", "match": [["marco", "dessert"]]}
+  ],
+  "closed": ["a1"],
+  "kept_open": ["a2", "a3"]
+ }
+}

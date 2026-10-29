@@ -1,0 +1,19 @@
+{
+ "about": "A choice the user put off, after finishing the smaller task.",
+ "sessions": [{"project": "home/garden-planner", "turns": [
+  ["user", "Add a seed script that fills the plants table with 20 sample plants."],
+  ["claude", "Added `scripts/seed_plants.py` with 20 sample plants (tomato, basil, kale, ...). It is idempotent: running it twice doesn't duplicate rows. I ran it against the dev database and the plants page shows them."],
+  ["user", "Nice. Now the bigger question: should we stay on SQLite or move to Postgres before adding the sharing feature?"],
+  ["claude", "Trade-offs: SQLite keeps deployment to a single file and is fine for one user. Sharing means several people writing at once, and Postgres handles concurrent writes and row-level permissions much better, but you'd need a managed database (about 15 a month) and a migration. A middle path is SQLite with WAL mode until sharing has real users."],
+  ["user", "Let me think about it over the weekend, I'll decide by Monday. Don't change anything yet."],
+  ["claude", "Understood, I left the database as it is. When you've decided, the migration and the sharing feature can follow."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Decide between SQLite and Postgres", "match": [["sqlite", "postgres", "database"], ["decide", "choose", "decision", "pick", "sqlite or", "or postgres", "vs"]]}
+  ],
+  "not_open": [
+   {"label": "Write the seed script (done)", "match": [["seed"]]}
+  ]
+ }
+}

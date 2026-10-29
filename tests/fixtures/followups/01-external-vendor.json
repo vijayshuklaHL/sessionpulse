@@ -1,0 +1,22 @@
+{
+ "about": "Work outside the session (ask a vendor, renew a certificate) next to a bug that was fixed in it.",
+ "sessions": [{"project": "work/acme-billing", "turns": [
+  ["user", "The monthly invoice CSV export puts the totals in the wrong column. Can you look at export_invoices.py?"],
+  ["claude", "Found it: the header list has `tax` and `total` swapped, so every row is shifted after column 6. I swapped them back and added a test that checks the header order against a sample row. The tests pass now."],
+  ["user", "Great, that fixes the export. While we're here, the payment gateway from Northwind Pay says they will rotate our API key soon, but nobody told us when."],
+  ["claude", "The client reads the key from `NORTHWIND_API_KEY` at startup, so a rotation needs a restart. I can't find a rotation date anywhere in the repo or the docs folder. You'll need to ask Northwind Pay for the exact date and whether the old key keeps working for a grace period."],
+  ["user", "Ok, I'll email their support. Also I just noticed the staging certificate expires on 6 November."],
+  ["claude", "Right, `staging.acme-billing.test` uses a manually issued certificate, not the automatic one. Someone has to renew it in the hosting panel before 6 November, otherwise staging will show certificate errors."],
+  ["user", "I'll do that from the hosting panel later this week. That's it for today."],
+  ["claude", "Summary: the CSV export fix is committed with a test. Still open on your side: ask Northwind Pay for the API key rotation date, and renew the staging certificate before 6 November."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Ask Northwind Pay for the API key rotation date", "match": [["northwind", "payment gateway", "vendor"], ["key", "rotat"]]},
+   {"label": "Renew the staging certificate before 6 November", "match": [["cert", "ssl", "tls"], ["renew"]]}
+  ],
+  "not_open": [
+   {"label": "Fix the CSV export column order (done)", "match": [["csv", "export"], ["column", "header", "fix"]]}
+  ]
+ }
+}

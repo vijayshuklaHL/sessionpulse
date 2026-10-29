@@ -1,0 +1,24 @@
+{
+ "about": "Broken JSON lines, a half-written last line, injected CLI text, tool results and a subagent (sidechain) turn. Only the main conversation counts.",
+ "sessions": [{"project": "home/budget-sheet", "turns": [
+  ["user", "Add a chart of monthly spending to the budget sheet generator."],
+  {"raw": "{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": \"broken"},
+  ["claude", "Added a bar chart of spending per month to the generated sheet. It reads the categories from the existing summary tab."],
+  ["user", "<command-name>/clear</command-name>"],
+  {"tool_result": "Exit code 0\n24 passed"},
+  {"sidechain": ["claude", "Subagent note: someone should email the bank about the missing CSV export for March."]},
+  {"raw": "not json at all"},
+  ["user", "The chart looks good. I still need to download the October statement from the bank website, it isn't in the folder yet."],
+  ["claude", "The generator will pick it up once the October statement file is in the statements folder."],
+  {"raw": "{\"type\": \"assistant\", \"message\": {\"role\": \"assis"}
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Download the October bank statement", "match": [["october"], ["statement"]]}
+  ],
+  "not_open": [
+   {"label": "Subagent-only note about the March CSV", "match": [["march"]]},
+   {"label": "Add the spending chart (done)", "match": [["chart"]]}
+  ]
+ }
+}

@@ -1,0 +1,40 @@
+{
+ "about": "Four sessions in one project over four days keep mentioning the same open work in new words (how the real board got hundreds of copies). Each piece of work should be on the list once, and the one finished on day 3 closed.",
+ "sessions": [
+  {"project": "work/clinic-booking", "turns": [
+   ["user", "Let's start the reminder emails for appointments."],
+   ["claude", "I added the reminder job: it runs every hour and emails patients 24 hours before their appointment, using the template in `emails/reminder.html`. It sends through the SMTP settings in the config."],
+   ["user", "Looks good. The SMTP account is still the test one. I need to ask the clinic's IT person, Daniel, for the real SMTP credentials."],
+   ["claude", "Right, production sending needs Daniel's SMTP account. Also open: the reminder template still has placeholder text where the clinic's address should go; the clinic has to give you the exact wording."],
+   ["user", "Ok. Let's stop here."]
+  ]},
+  {"project": "work/clinic-booking", "turns": [
+   ["user", "Today: the cancel link in the reminder email."],
+   ["claude", "Added a signed cancel link that expires after the appointment time. Clicking it frees the slot and shows a confirmation page."],
+   ["user", "Daniel still hasn't sent the mail server login, so I can't test real sending."],
+   ["claude", "Understood. Real sending stays blocked until you have the production SMTP login from Daniel. The address placeholder in the template is also still there."]
+  ]},
+  {"project": "work/clinic-booking", "turns": [
+   ["user", "The clinic sent their address text: 'Green Street Clinic, 12 Green Street, ground floor, entrance on the left'. Please put it in the reminder template."],
+   ["claude", "Replaced the placeholder in `emails/reminder.html` with the clinic's address text, and checked the rendered email in the preview. The placeholder is gone."],
+   ["user", "Great. Still no SMTP details from Daniel, I'll chase him again."],
+   ["claude", "Ok. Sending in production is still waiting on Daniel's SMTP credentials."]
+  ]},
+  {"project": "work/clinic-booking", "turns": [
+   ["user", "Small one: the reminder job should skip cancelled appointments."],
+   ["claude", "Fixed: the job now filters out appointments with status 'cancelled', with a test."],
+   ["user", "Thanks. And reminder for me: I'm still waiting for Daniel's mail credentials, and once they come I want to send a test reminder to my own address before going live."],
+   ["claude", "Noted: when Daniel sends the SMTP credentials, put them in the production config and send a test reminder to yourself before enabling it for patients."]
+  ]}
+ ],
+ "expect": {
+  "open": [
+   {"label": "Get the production SMTP credentials from Daniel", "match": [["daniel", "smtp", "mail server", "mail credential"]], "unless": ["test reminder", "test email", "send a test"]},
+   {"label": "Send a test reminder to yourself before going live", "match": [["test"], ["reminder", "email", "send"]]}
+  ],
+  "not_open": [
+   {"label": "Put the clinic's address in the reminder template (done on day 3)", "match": [["address", "placeholder"]]},
+   {"label": "Add the cancel link (done)", "match": [["cancel"]]}
+  ]
+ }
+}

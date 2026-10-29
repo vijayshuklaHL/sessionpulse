@@ -1,0 +1,22 @@
+{
+ "about": "Answers and documents expected from other people.",
+ "sessions": [{"project": "work/photo-archive", "turns": [
+  ["user", "Start on the album page layout."],
+  ["claude", "I can scaffold the route and the data loading, but the visual layout depends on the mockups. Do you have them?"],
+  ["user", "No, Priya is still making them. She said she'd send them by Thursday. Just do the route and data part."],
+  ["claude", "Done: `/albums/<id>` loads the album and its photos, paginated by 50, with a plain placeholder template. The layout can go in once Priya's mockups arrive."],
+  ["user", "Also, can we use the Inter and Lora fonts in the app?"],
+  ["claude", "Both are under the SIL Open Font License, which allows bundling. But your company may have a policy on third-party licenses; earlier you mentioned the legal team reviews every new license."],
+  ["user", "True, I asked legal yesterday and they haven't answered yet. Keep the system fonts until they reply."],
+  ["claude", "Kept the system font stack. Waiting on: Priya's mockups for the album page, and legal's answer about the Inter and Lora licenses."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Waiting for Priya's album page mockups", "match": [["priya", "mockup"]]},
+   {"label": "Waiting for legal's answer on the font licenses", "match": [["legal", "licen"], ["font", "inter", "lora"]]}
+  ],
+  "not_open": [
+   {"label": "Scaffold the album route (done)", "match": [["route", "scaffold", "data loading"]]}
+  ]
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "about": "A long session that is trimmed to fit (60,000 characters). One open item sits in the middle, which the trim cuts out; one is at the end.",
+ "sessions": [{"project": "work/log-pipeline", "turns": [
+  ["user", "Let's work through the log pipeline backlog today, starting with the parser."],
+  {"filler": 14},
+  ["user", "Side note before I forget: I have to ask the hosting provider to raise our log storage quota from 50 GB to 200 GB, they need a ticket from me."],
+  ["claude", "Noted, that needs a ticket from you with the hosting provider. Continuing with the parser."],
+  {"filler": 30},
+  ["user", "Ok, we're at the end of the day. What's left?"],
+  ["claude", "The parser and the retry logic are done and tested. Left for the next session: add alerting when the ingest lag goes over 5 minutes."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Add alerting when ingest lag is over 5 minutes", "match": [["alert"], ["lag", "ingest"]]},
+   {"label": "Ask the hosting provider to raise the log storage quota (middle of a long session)", "match": [["quota", "storage"]], "hard": true}
+  ],
+  "not_open": [
+   {"label": "Retry logic (done)", "match": [["retry"]]}
+  ]
+ }
+}

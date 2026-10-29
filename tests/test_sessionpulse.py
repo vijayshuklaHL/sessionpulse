@@ -591,6 +591,84 @@ class FollowupTests(Fixture):
         self.assertIsNone(followups.start_worker(self.cfg))
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+import eval_followups  # noqa: E402
+
+FAKE_EVAL_CLAUDE = """#!/usr/bin/env python3
+import json, sys
+sys.stdin.read()
+print(json.dumps({"is_error": False, "total_cost_usd": 0.001, "duration_ms": 900,
+                  "usage": {"input_tokens": 1200, "output_tokens": 80},
+                  "structured_output": {"items": [
+                      {"text": "Ask Northwind Pay when the API key rotates", "kind": "external"},
+                      {"text": "Fix the CSV export header order", "kind": "task"}], "resolved": []}}))
+"""
+
+
+class EvalTests(unittest.TestCase):
+    """The follow-up eval's fixtures and scoring (no model calls)."""
+
+    def setUp(self):
+        self.cases = eval_followups.load_cases()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_rules_match_their_own_labels_only(self):
+        self.assertGreaterEqual(len(self.cases), 10)
+        for name, spec in self.cases.items():
+            exp = spec["expect"]
+            for rule in exp["open"]:
+                self.assertTrue(eval_followups.matches(rule["label"], rule), (name, rule["label"]))
+            for rule in exp.get("ok", []) + exp.get("not_open", []):
+                self.assertTrue(eval_followups.matches(rule["label"], rule), (name, rule["label"]))
+                self.assertFalse(any(eval_followups.matches(rule["label"], o) for o in exp["open"]),
+                                 (name, rule["label"]))
+
+    def test_perfect_answer_scores_perfectly(self):
+        for name, spec in self.cases.items():
+            added = [{"id": str(n), "text": r["label"]} for n, r in enumerate(spec["expect"]["open"])]
+            r = eval_followups.score(spec, added, added, [""])
+            self.assertEqual((r["found"], r["hard_found"]), (r["expected"], r["hard_expected"]), name)
+            self.assertEqual((r["wrong_open"], r["duplicates"], r["extra"], r["leaks"]), ([], 0, [], []), name)
+
+    def test_wrong_duplicate_and_leaked_items_counted(self):
+        spec = self.cases["09-secret-in-text"]
+        added = [{"id": "1", "text": "Revoke token ghp_FAKEexample0000 and make a new one"},
+                 {"id": "2", "text": "Rotate the GitHub token"},
+                 {"id": "3", "text": "Make the script read the token from a file", "quote": "something never said"}]
+        r = eval_followups.score(spec, added, added, ["Make the script read the token from a file"])
+        self.assertEqual((r["found"], r["duplicates"]), (1, 1))
+        self.assertEqual(r["wrong_open"], ["Make the script read the token from a file"])
+        self.assertEqual(r["leaks"], ["ghp_FAKEexample"])
+        self.assertEqual(r["bad_quotes"], ["something never said"])
+
+    def test_transcripts_read_like_real_ones(self):
+        sess, path = eval_followups.build("11", self.cases["11-malformed"], self.root)[0]
+        d = followups.digest(path, sess["project"])
+        self.assertIn("October statement", d)
+        for gone in ("March", "/clear", "24 passed", "broken"):
+            self.assertNotIn(gone, d)
+        sess, path = eval_followups.build("10", self.cases["10-long-session"], self.root)[0]
+        d = followups.digest(path, sess["project"])
+        self.assertIn("ingest lag", d)
+        self.assertNotIn("quota", d)  # trimmed away: why this item is marked hard
+
+    def test_run_case_with_fake_claude(self):
+        fake = self.root / "fake-claude"
+        fake.write_text(FAKE_EVAL_CLAUDE)
+        fake.chmod(0o755)
+        with unittest.mock.patch.object(followups.subprocess, "run", eval_followups._counting_run):
+            r = eval_followups.run_case("01", self.cases["01-external-vendor"], "haiku", str(fake))
+        self.assertEqual((r["found"], r["expected"]), (1, 2))
+        self.assertEqual(r["wrong_open"], ["Fix the CSV export header order"])
+        self.assertEqual((r["usage"]["calls"], r["usage"]["input_tokens"]), (1, 1200))
+        s = eval_followups.summarise({"01": [dict(r, sessions=1)]})
+        self.assertEqual((s["recall"], s["wrong_open"], s["calls"]), (0.5, 1, 1))
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *a, **kw):
         return None

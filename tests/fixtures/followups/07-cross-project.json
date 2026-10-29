@@ -1,0 +1,26 @@
+{
+ "about": "The same work comes up in two projects. Ideally it ends up on the list once.",
+ "sessions": [
+  {"project": "work/ops-notes", "turns": [
+   ["user", "Make me a checklist page for month-end in the ops notes."],
+   ["claude", "Added `month-end.md` with sections for invoices, payroll and backups."],
+   ["user", "The most important one this month: run the monthly payroll pre-check before the 25th. I haven't done it yet."],
+   ["claude", "I put it at the top of the page. It is still open: run the monthly payroll pre-check before the 25th."]
+  ]},
+  {"project": "work/payroll-scripts", "turns": [
+   ["user", "The pre-check script fails on the new contractor rows, can you fix it?"],
+   ["claude", "The contractor rows have no tax code, so the validator rejected them. It now skips the tax check for rows with type 'contractor'. Tests pass."],
+   ["user", "Good. I still need to actually run the monthly payroll pre-check before the 25th, I'll do it on Monday."],
+   ["claude", "The script is ready. Still open: run the monthly payroll pre-check before the 25th."]
+  ]}
+ ],
+ "expect": {
+  "open": [
+   {"label": "Run the monthly payroll pre-check before the 25th", "match": [["payroll"], ["pre-check", "precheck", "check"]], "unless": ["contractor"]}
+  ],
+  "not_open": [
+   {"label": "Fix the contractor rows in the pre-check script (done)", "match": [["contractor"]]},
+   {"label": "Write the month-end page (done)", "match": [["month-end page", "checklist page", "month-end.md"]]}
+  ]
+ }
+}

@@ -1,0 +1,1701 @@
+{
+ "label": "0.1.3",
+ "version": "0.1.3",
+ "git": "f003584",
+ "model": "haiku",
+ "repeat": 3,
+ "at": "2026-10-29T23:52:42+05:30",
+ "summary": {
+  "runs": 36,
+  "sessions": 48,
+  "recall": 1.0,
+  "hard_recall": 0.0,
+  "wrong_open": 2,
+  "wrong_open_rate": 0.026,
+  "duplicates_per_session": 0.25,
+  "extra": 1,
+  "closed": "3/3",
+  "closed_wrongly": 0,
+  "leaks": 0,
+  "bad_quotes": "0/0",
+  "errors": 0,
+  "calls": 48,
+  "input_tokens": 155042,
+  "output_tokens": 24595,
+  "cost_usd": 0.0181,
+  "model_seconds": 155.6
+ },
+ "cases": {
+  "01-external-vendor": [
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 4.4,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 386,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 1928,
+     "cost_usd": 0.00028088,
+     "model_ms": 2701
+    },
+    "items": [
+     {
+      "text": "Email Northwind Pay support for the API key rotation date and old-key grace period",
+      "kind": "external",
+      "detail": "Rotation date is unknown. Client reads NORTHWIND_API_KEY at startup, so a restart is needed after rotation.",
+      "project": "work/acme-billing"
+     },
+     {
+      "text": "Renew the staging certificate for staging.acme-billing.test in the hosting panel",
+      "kind": "external",
+      "detail": "Manually issued cert expires 6 November. Without renewal, staging shows certificate errors. Due in about a week.",
+      "project": "work/acme-billing"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 1,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.8,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 761,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1928,
+     "cost_usd": 0.00046818,
+     "model_ms": 4190
+    },
+    "items": [
+     {
+      "text": "Email Northwind Pay support for the API key rotation date and grace period",
+      "kind": "external",
+      "detail": "They said the key will rotate soon but gave no date. Ask whether the old key keeps working during a grace period.",
+      "project": "work/acme-billing"
+     },
+     {
+      "text": "Renew the staging certificate for staging.acme-billing.test in the hosting panel",
+      "kind": "external",
+      "detail": "It is manually issued, not automatic. It expires 6 November, after which staging shows certificate errors. Planned for later this week.",
+      "project": "work/acme-billing"
+     },
+     {
+      "text": "Restart the billing client after the Northwind API key rotation",
+      "kind": "task",
+      "detail": "The client reads NORTHWIND_API_KEY only at startup, so it must be restarted to pick up the rotated key.",
+      "project": "work/acme-billing"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 4.4,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 432,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1928,
+     "cost_usd": 0.00030367999999999997,
+     "model_ms": 2722
+    },
+    "items": [
+     {
+      "text": "Email Northwind Pay support for the API key rotation date and old-key grace period",
+      "kind": "external",
+      "detail": "Rotation date is unknown and not in the repo or docs. A rotation needs an app restart to pick up NORTHWIND_API_KEY.",
+      "project": "work/acme-billing"
+     },
+     {
+      "text": "Renew the staging certificate for staging.acme-billing.test in the hosting panel",
+      "kind": "external",
+      "detail": "Manually issued cert expires 6 November. Without renewal, staging shows certificate errors. Today is 29 October.",
+      "project": "work/acme-billing"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "02-deferred-decision": [
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.0,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 546,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1779,
+     "cost_usd": 0.00035919,
+     "model_ms": 3438
+    },
+    "items": [
+     {
+      "text": "Decide whether to stay on SQLite or move to Postgres before adding sharing",
+      "kind": "decision",
+      "detail": "User will decide by Monday (2026-11-02). Options: keep SQLite with WAL, or move to managed Postgres (~$15/mo plus migration).",
+      "project": "home/garden-planner"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 4.4,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 407,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 1779,
+     "cost_usd": 0.00028989,
+     "model_ms": 2849
+    },
+    "items": [
+     {
+      "text": "Decide whether to stay on SQLite or move to Postgres before the sharing feature",
+      "kind": "decision",
+      "detail": "You said you'd decide by Monday. Options: stay on SQLite (possibly with WAL mode) or move to managed Postgres (about 15/month plus migration).",
+      "project": "home/garden-planner"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 4.6,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 418,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 1779,
+     "cost_usd": 0.00029559000000000003,
+     "model_ms": 3023
+    },
+    "items": [
+     {
+      "text": "Decide whether to stay on SQLite or move to Postgres before the sharing feature",
+      "kind": "decision",
+      "detail": "You said you'd decide by Monday. Options: stay on SQLite (maybe with WAL mode) or migrate to managed Postgres (~$15/month). Nothing changed yet.",
+      "project": "home/garden-planner"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "03-waiting-on-others": [
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 1,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.9,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 819,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 1794,
+     "cost_usd": 0.00049604,
+     "model_ms": 4291
+    },
+    "items": [
+     {
+      "text": "Get Priya's album page mockups",
+      "kind": "waiting",
+      "detail": "Priya said she would send them by Thursday (2026-10-22). Needed before the album page layout can be built.",
+      "project": "work/photo-archive"
+     },
+     {
+      "text": "Get legal's answer on the Inter and Lora font licenses",
+      "kind": "waiting",
+      "detail": "Legal was asked on 2026-10-19 and had not replied as of the session. Fonts stay on the system stack until then.",
+      "project": "work/photo-archive"
+     },
+     {
+      "text": "Decide whether to bundle Inter and Lora or keep system fonts",
+      "kind": "decision",
+      "detail": "Both are SIL OFL, but the choice depends on legal's license review. Currently using the system font stack.",
+      "project": "work/photo-archive"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 1,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 6.1,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 796,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1794,
+     "cost_usd": 0.00048434,
+     "model_ms": 4394
+    },
+    "items": [
+     {
+      "text": "Get Priya's album page mockups",
+      "kind": "waiting",
+      "detail": "Priya said she would send the mockups by Thursday. The album page layout is blocked until they arrive.",
+      "project": "work/photo-archive"
+     },
+     {
+      "text": "Get legal's answer on the Inter and Lora font licenses",
+      "kind": "waiting",
+      "detail": "Legal was asked yesterday and hadn't replied. Fonts stay on the system stack until they do.",
+      "project": "work/photo-archive"
+     },
+     {
+      "text": "Decide whether to adopt Inter and Lora once legal replies",
+      "kind": "decision",
+      "detail": "Deferred. Both fonts are OFL-licensed, but company policy requires legal review of new licenses first.",
+      "project": "work/photo-archive"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 2,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.8,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 774,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 1794,
+     "cost_usd": 0.00047353999999999994,
+     "model_ms": 4290
+    },
+    "items": [
+     {
+      "text": "Follow up with Priya on the album page mockups she promised by Thursday",
+      "kind": "waiting",
+      "detail": "The album page visual layout is blocked until her mockups arrive. The route and data loading are already done.",
+      "project": "work/photo-archive"
+     },
+     {
+      "text": "Follow up with legal on whether Inter and Lora can be bundled in the app",
+      "kind": "waiting",
+      "detail": "Legal was asked yesterday and has not answered. The app is using the system font stack until they reply.",
+      "project": "work/photo-archive"
+     },
+     {
+      "text": "Build the album page layout from Priya's mockups",
+      "kind": "task",
+      "detail": "Deferred until the mockups arrive. The /albums/<id> route, data loading, and pagination by 50 are already in place.",
+      "project": "work/photo-archive"
+     },
+     {
+      "text": "Decide whether to bundle Inter and Lora fonts once legal replies",
+      "kind": "decision",
+      "detail": "If legal approves, switch from the system font stack to Inter and Lora. If not, keep the system fonts.",
+      "project": "work/photo-archive"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "04-all-done": [
+   {
+    "expected": 0,
+    "found": 0,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.2,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 145,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 1684,
+     "cost_usd": 0.00015814000000000003,
+     "model_ms": 1487
+    },
+    "items": [],
+    "sessions": 1
+   },
+   {
+    "expected": 0,
+    "found": 0,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.0,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 131,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 1684,
+     "cost_usd": 0.00015114000000000002,
+     "model_ms": 1346
+    },
+    "items": [],
+    "sessions": 1
+   },
+   {
+    "expected": 0,
+    "found": 0,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.1,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 139,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1684,
+     "cost_usd": 0.00015474,
+     "model_ms": 1617
+    },
+    "items": [],
+    "sessions": 1
+   }
+  ],
+  "05-rejected-idea": [
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.4,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 218,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 1660,
+     "cost_usd": 0.0001944,
+     "model_ms": 1819
+    },
+    "items": [
+     {
+      "text": "Write API docs for the new /recipes/search endpoint",
+      "kind": "task",
+      "detail": "The endpoint has no documentation yet. User asked to be reminded about it in a later session.",
+      "project": "home/recipe-api"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.9,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 235,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 1660,
+     "cost_usd": 0.0002029,
+     "model_ms": 2225
+    },
+    "items": [
+     {
+      "text": "Write API docs for the new /recipes/search endpoint",
+      "kind": "task",
+      "detail": "The endpoint has no documentation yet. The user asked to be reminded to write it in a later session.",
+      "project": "home/recipe-api"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.3,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 241,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1660,
+     "cost_usd": 0.0002055,
+     "model_ms": 1792
+    },
+    "items": [
+     {
+      "text": "Write API docs for the new /recipes/search endpoint",
+      "kind": "task",
+      "detail": "The endpoint has no documentation yet. The user asked to be reminded to write it in a later session.",
+      "project": "home/recipe-api"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "06-audit-checklist": [
+   {
+    "expected": 3,
+    "found": 3,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 4.7,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 558,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 1653,
+     "cost_usd": 0.00036433,
+     "model_ms": 3094
+    },
+    "items": [
+     {
+      "text": "Change the default admin password on the shop router",
+      "kind": "external",
+      "detail": "Deploy notes still say 'change later'. Log in to the router and set a strong unique password; do not store it in the repo.",
+      "project": "work/kiosk-app"
+     },
+     {
+      "text": "Restrict SSH (port 22) on the kiosk box to the office IP only",
+      "kind": "external",
+      "detail": "Port 22 is currently open to the internet. Tighten the firewall or security group so only the office IP can reach it, then verify.",
+      "project": "work/kiosk-app"
+     },
+     {
+      "text": "Review the 3 open dependency alerts on the repo, including the 2 high-severity ones",
+      "kind": "checklist",
+      "detail": "Check each alert, decide whether it affects the kiosk app, and upgrade or document the risk before the shop opens next month.",
+      "project": "work/kiosk-app"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 3,
+    "found": 3,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 4.6,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 525,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1653,
+     "cost_usd": 0.00034743,
+     "model_ms": 3064
+    },
+    "items": [
+     {
+      "text": "Change the default admin password on the shop router",
+      "kind": "external",
+      "detail": "Deploy notes say 'change later'. Log in to the router at the shop and set a new admin password.",
+      "project": "work/kiosk-app"
+     },
+     {
+      "text": "Restrict port 22 on the kiosk box to the office IP only",
+      "kind": "external",
+      "detail": "SSH is currently open to the internet. Tighten the firewall or security group so only the office IP can reach it.",
+      "project": "work/kiosk-app"
+     },
+     {
+      "text": "Review the 3 open dependency alerts on the kiosk repo, starting with the 2 high-severity",
+      "kind": "checklist",
+      "detail": "Two alerts are high severity. Check each for impact on the kiosk app and upgrade or accept the risk.",
+      "project": "work/kiosk-app"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 3,
+    "found": 3,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.3,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 559,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 1653,
+     "cost_usd": 0.00036483,
+     "model_ms": 3662
+    },
+    "items": [
+     {
+      "text": "Change the default admin password on the shop router",
+      "kind": "external",
+      "detail": "Deploy notes still say 'change later'. Log in at the shop and replace the default admin password.",
+      "project": "work/kiosk-app"
+     },
+     {
+      "text": "Restrict port 22 on the kiosk box so only the office IP can reach it",
+      "kind": "checklist",
+      "detail": "SSH is currently open to the internet. Confirm the firewall or security group allows only the office IP, then test.",
+      "project": "work/kiosk-app"
+     },
+     {
+      "text": "Review and resolve the 3 open dependency alerts on the kiosk app repo, two high severity",
+      "kind": "task",
+      "detail": "Upgrade or patch the flagged packages, prioritizing the two high-severity alerts, and re-run the scan.",
+      "project": "work/kiosk-app"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "07-cross-project": [
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 1,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 9.2,
+    "usage": {
+     "calls": 2,
+     "input_tokens": 4,
+     "output_tokens": 819,
+     "cache_creation_input_tokens": 686,
+     "cache_read_input_tokens": 3115,
+     "cost_usd": 0.00057825,
+     "model_ms": 5790
+    },
+    "items": [
+     {
+      "text": "Run the monthly payroll pre-check (was due before the 25th, now overdue)",
+      "kind": "checklist",
+      "detail": "User has not run it yet. Today is 2026-10-29, so the 25th deadline has already passed. Top item on month-end.md.",
+      "project": "work/ops-notes"
+     },
+     {
+      "text": "Run the monthly payroll pre-check script",
+      "kind": "task",
+      "detail": "Planned for Monday before the 25th. The session ended without a run, and today is the 29th, so confirm whether it was done.",
+      "project": "work/payroll-scripts"
+     }
+    ],
+    "sessions": 2
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 1,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 10.6,
+    "usage": {
+     "calls": 2,
+     "input_tokens": 4,
+     "output_tokens": 863,
+     "cache_creation_input_tokens": 684,
+     "cache_read_input_tokens": 3115,
+     "cost_usd": 0.0005998500000000001,
+     "model_ms": 6144
+    },
+    "items": [
+     {
+      "text": "Run the monthly payroll pre-check (deadline was the 25th; now overdue)",
+      "kind": "checklist",
+      "detail": "User said they had not run it yet. The 25th has passed as of 2026-10-29, so run it now and confirm it is done.",
+      "project": "work/ops-notes"
+     },
+     {
+      "text": "Run the monthly payroll pre-check script",
+      "kind": "task",
+      "detail": "Planned for Monday 2026-10-26 before the 25th. The transcript doesn't show it ran, and the 25th has already passed.",
+      "project": "work/payroll-scripts"
+     }
+    ],
+    "sessions": 2
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [
+     "Run the monthly payroll pre-check script on the contractor rows"
+    ],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 9.1,
+    "usage": {
+     "calls": 2,
+     "input_tokens": 4,
+     "output_tokens": 885,
+     "cache_creation_input_tokens": 680,
+     "cache_read_input_tokens": 3115,
+     "cost_usd": 0.00061005,
+     "model_ms": 5924
+    },
+    "items": [
+     {
+      "text": "Run the monthly payroll pre-check",
+      "kind": "checklist",
+      "detail": "Top item on month-end.md, flagged as most important. Not done as of 2026-10-20. Due before the 25th, which has already passed.",
+      "project": "work/ops-notes"
+     },
+     {
+      "text": "Run the monthly payroll pre-check script on the contractor rows",
+      "kind": "task",
+      "detail": "Planned for Monday, before the 25th. Today is 29 Oct, so that deadline has passed. Confirm whether it ran and whether the next cycle needs it.",
+      "project": "work/payroll-scripts"
+     }
+    ],
+    "sessions": 2
+   }
+  ],
+  "08-closes-earlier": [
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [
+     "Clear the CDN cache after the production deploy"
+    ],
+    "closed_later": [],
+    "closed_expected": 1,
+    "closed_ok": 1,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 6.0,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 776,
+     "cache_creation_input_tokens": 340,
+     "cache_read_input_tokens": 1726,
+     "cost_usd": 0.00047346000000000004,
+     "model_ms": 4331
+    },
+    "items": [
+     {
+      "text": "Deploy the committed upload fix to production tonight",
+      "kind": "task",
+      "detail": "User plans to deploy the upload fix (hard-coded 2 MB limit removed, uses 10 MB config) to production tonight.",
+      "project": "home/recipe-site"
+     },
+     {
+      "text": "Clear the CDN cache after the production deploy",
+      "kind": "external",
+      "detail": "Needed so old error pages don't stick after the upload fix goes live. Log in to the CDN and purge after deploying.",
+      "project": "home/recipe-site"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [
+     "Clear the CDN cache after the production deploy"
+    ],
+    "closed_later": [],
+    "closed_expected": 1,
+    "closed_ok": 1,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.0,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 639,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1726,
+     "cost_usd": 0.00040516,
+     "model_ms": 3406
+    },
+    "items": [
+     {
+      "text": "Deploy the upload fix to production tonight",
+      "kind": "task",
+      "detail": "The fix is committed and tested. The user planned to deploy it to production tonight (2026-10-20).",
+      "project": "home/recipe-site"
+     },
+     {
+      "text": "Clear the CDN cache after the production deploy",
+      "kind": "checklist",
+      "detail": "Needed so old error pages don't stick after the upload fix goes live. Flagged by Claude, not yet confirmed as done.",
+      "project": "home/recipe-site"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [
+     "Clear the CDN cache after the production deploy"
+    ],
+    "closed_later": [],
+    "closed_expected": 1,
+    "closed_ok": 1,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.1,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 555,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1726,
+     "cost_usd": 0.00036316000000000007,
+     "model_ms": 3513
+    },
+    "items": [
+     {
+      "text": "Deploy the image upload fix to production tonight",
+      "kind": "task",
+      "detail": "Upload fix is committed and tested locally. Removes the hard-coded 2 MB limit so the 10 MB config value applies.",
+      "project": "home/recipe-site"
+     },
+     {
+      "text": "Clear the CDN cache after the production deploy",
+      "kind": "external",
+      "detail": "Stops old error pages from sticking after the upload fix goes live.",
+      "project": "home/recipe-site"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "09-secret-in-text": [
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [
+     "Save the new GitHub token to ~/.config/deploy/token and rerun the deploy script"
+    ],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 6.2,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 722,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 1639,
+     "cost_usd": 0.00044579000000000005,
+     "model_ms": 4874
+    },
+    "items": [
+     {
+      "text": "Revoke the exposed GitHub token and create a new one with the workflow scope",
+      "kind": "external",
+      "detail": "Token was pasted into this chat, so treat it as compromised. Planned for after lunch today. The 401 comes from the missing workflow scope.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Save the new GitHub token to ~/.config/deploy/token and rerun the deploy script",
+      "kind": "checklist",
+      "detail": "The script now reads the token from this file instead of the environment. Confirm the 401 is gone.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Change the database password tonight",
+      "kind": "external",
+      "detail": "The DB password was pasted into this chat, so treat it as exposed. Update any config or env files that use it.",
+      "project": "home/dotfiles"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [
+     "Verify the deploy script reads the token from ~/.config/deploy/token and rerun it"
+    ],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [
+     "Create a new GitHub token with the workflow scope",
+     "Save the new GitHub token to ~/.config/deploy/token"
+    ],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 6.0,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 922,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 1639,
+     "cost_usd": 0.00054599,
+     "model_ms": 4337
+    },
+    "items": [
+     {
+      "text": "Revoke the GitHub token that was pasted into this chat",
+      "kind": "external",
+      "detail": "The token was exposed in the conversation. Planned for after lunch; revoke it in GitHub settings.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Create a new GitHub token with the workflow scope",
+      "kind": "external",
+      "detail": "The 401 in the deploy script comes from the old token missing the workflow scope. Do this after revoking the old one.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Save the new GitHub token to ~/.config/deploy/token",
+      "kind": "task",
+      "detail": "The script was changed to read the token from this file instead of the environment. Only the new token goes here.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Change the database password tonight",
+      "kind": "external",
+      "detail": "DB_PASSWORD was pasted into this chat and should be treated as exposed. Update any config that uses it afterwards.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Verify the deploy script reads the token from ~/.config/deploy/token and rerun it",
+      "kind": "checklist",
+      "detail": "The script change was reported in the session but not verified. Confirm the 401 is gone after the new token is in place.",
+      "project": "home/dotfiles"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [
+     "Save the new token to ~/.config/deploy/token and confirm the deploy script runs without 401"
+    ],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 5.8,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 696,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 1639,
+     "cost_usd": 0.00043299000000000007,
+     "model_ms": 4097
+    },
+    "items": [
+     {
+      "text": "Revoke the exposed GitHub token and create a new one with the workflow scope",
+      "kind": "external",
+      "detail": "The old token was pasted into this chat, so treat it as exposed. The 401 came from the missing workflow scope. Planned for after lunch on 2026-10-20.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Change the database password",
+      "kind": "external",
+      "detail": "The DB password was pasted into this chat, so treat it as exposed. Planned for the night of 2026-10-20.",
+      "project": "home/dotfiles"
+     },
+     {
+      "text": "Save the new token to ~/.config/deploy/token and confirm the deploy script runs without 401",
+      "kind": "checklist",
+      "detail": "The script now reads the token from that file instead of the environment. Test the deploy after replacing the old token.",
+      "project": "home/dotfiles"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "10-long-session": [
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 1,
+    "hard_found": 0,
+    "missed": [
+     "Ask the hosting provider to raise the log storage quota (middle of a long session)"
+    ],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [
+     "Verify the fixture fixes for parts 8-30 (batch-07 through batch-29)"
+    ],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 8.0,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 1181,
+     "cache_creation_input_tokens": 343,
+     "cache_read_input_tokens": 21015,
+     "cost_usd": 0.00086945,
+     "model_ms": 6745
+    },
+    "items": [
+     {
+      "text": "Add alerting when ingest lag goes over 5 minutes",
+      "kind": "task",
+      "detail": "Planned for the next session. The closing summary says it was left for later; no alerting work was done in this session.",
+      "project": "work/log-pipeline"
+     },
+     {
+      "text": "Verify the fixture fixes for parts 8-30 (batch-07 through batch-29)",
+      "kind": "checklist",
+      "detail": "The log shows repeated step-by-step claims, but the closing summary confirms only the parser and retry logic. Check the rest against the tests.",
+      "project": "work/log-pipeline"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 1,
+    "hard_found": 0,
+    "missed": [
+     "Ask the hosting provider to raise the log storage quota (middle of a long session)"
+    ],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 7.1,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 960,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 21015,
+     "cost_usd": 0.00075875,
+     "model_ms": 5851
+    },
+    "items": [
+     {
+      "text": "Add alerting when ingest lag goes over 5 minutes",
+      "kind": "task",
+      "detail": "Planned for the next session. The end-of-day summary lists it as the only item left open.",
+      "project": "work/log-pipeline"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 1,
+    "hard_found": 0,
+    "missed": [
+     "Ask the hosting provider to raise the log storage quota (middle of a long session)"
+    ],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 4.6,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 406,
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 21015,
+     "cost_usd": 0.00048154999999999997,
+     "model_ms": 2829
+    },
+    "items": [
+     {
+      "text": "Add alerting when ingest lag goes over 5 minutes",
+      "kind": "task",
+      "detail": "Planned for the next session. The parser and retry logic are reported done; this alerting work was not started.",
+      "project": "work/log-pipeline"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "11-malformed": [
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.2,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 216,
+     "cache_creation_input_tokens": 340,
+     "cache_read_input_tokens": 1546,
+     "cost_usd": 0.00019166000000000002,
+     "model_ms": 1553
+    },
+    "items": [
+     {
+      "text": "Download the October statement from the bank website into the statements folder",
+      "kind": "external",
+      "detail": "The October statement isn't in the folder yet, so the budget sheet generator can't include October spending.",
+      "project": "home/budget-sheet"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.3,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 208,
+     "cache_creation_input_tokens": 342,
+     "cache_read_input_tokens": 1546,
+     "cost_usd": 0.00018806,
+     "model_ms": 1775
+    },
+    "items": [
+     {
+      "text": "Download the October statement from the bank website",
+      "kind": "external",
+      "detail": "Not yet in the statements folder. The budget sheet generator needs it to include October in the spending chart.",
+      "project": "home/budget-sheet"
+     }
+    ],
+    "sessions": 1
+   },
+   {
+    "expected": 1,
+    "found": 1,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 0,
+    "extra": [],
+    "ok": [],
+    "closed_later": [],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 3.9,
+    "usage": {
+     "calls": 1,
+     "input_tokens": 2,
+     "output_tokens": 225,
+     "cache_creation_input_tokens": 340,
+     "cache_read_input_tokens": 1546,
+     "cost_usd": 0.00019616000000000002,
+     "model_ms": 2216
+    },
+    "items": [
+     {
+      "text": "Download the October statement from the bank website",
+      "kind": "external",
+      "detail": "It isn't in the statements folder yet, so the budget sheet generator can't include October until it's there.",
+      "project": "home/budget-sheet"
+     }
+    ],
+    "sessions": 1
+   }
+  ],
+  "12-same-project-rewording": [
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 1,
+    "extra": [],
+    "ok": [],
+    "closed_later": [
+     "Get the exact clinic address wording from the clinic",
+     "Replace the address placeholder in emails/reminder.html with the clinic's wording"
+    ],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 18.5,
+    "usage": {
+     "calls": 4,
+     "input_tokens": 8,
+     "output_tokens": 1930,
+     "cache_creation_input_tokens": 3729,
+     "cache_read_input_tokens": 4288,
+     "cost_usd": 0.0017544799999999999,
+     "model_ms": 12112
+    },
+    "items": [
+     {
+      "text": "Ask Daniel (clinic IT) for the production SMTP credentials",
+      "kind": "external",
+      "detail": "Reminder emails still use the test SMTP account; production sending needs the clinic's own SMTP account.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Get the exact clinic address wording from the clinic",
+      "kind": "waiting",
+      "detail": "The clinic has to provide the exact address text for the reminder template.",
+      "project": "work/clinic-booking",
+      "done_at": "closed later in the run"
+     },
+     {
+      "text": "Replace the address placeholder in emails/reminder.html with the clinic's wording",
+      "kind": "task",
+      "detail": "The template still has placeholder text where the clinic address should go. Do this once the wording arrives.",
+      "project": "work/clinic-booking",
+      "done_at": "closed later in the run"
+     },
+     {
+      "text": "Test the reminder email with the cancel link once SMTP credentials arrive",
+      "kind": "checklist",
+      "detail": "Real sending is untested. Confirm the email delivers and the signed cancel link frees the slot and shows the confirmation page.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Enable the reminder job for patients after the self-test reminder succeeds",
+      "kind": "task",
+      "detail": "User wants a test reminder sent to their own address before turning the job on for patients. Depends on SMTP credentials arriving.",
+      "project": "work/clinic-booking"
+     }
+    ],
+    "sessions": 4
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 2,
+    "extra": [],
+    "ok": [],
+    "closed_later": [
+     "Get the exact clinic address wording for the reminder email template"
+    ],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 19.6,
+    "usage": {
+     "calls": 4,
+     "input_tokens": 8,
+     "output_tokens": 2144,
+     "cache_creation_input_tokens": 3104,
+     "cache_read_input_tokens": 4859,
+     "cost_usd": 0.0017421899999999998,
+     "model_ms": 13594
+    },
+    "items": [
+     {
+      "text": "Ask Daniel (clinic IT) for the production SMTP credentials",
+      "kind": "external",
+      "detail": "Reminder emails still use the test SMTP account; production sending needs Daniel's SMTP account.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Get the exact clinic address wording for the reminder email template",
+      "kind": "waiting",
+      "detail": "emails/reminder.html still has placeholder text where the clinic's address should go.",
+      "project": "work/clinic-booking",
+      "done_at": "closed later in the run"
+     },
+     {
+      "text": "Test the signed cancel link end-to-end in a real reminder email once SMTP works",
+      "kind": "checklist",
+      "detail": "Real sending is blocked, so the link, slot release and confirmation page have not been tried in a sent email.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Put the SMTP credentials from Daniel into the production config",
+      "kind": "task",
+      "detail": "Once Daniel sends the mail credentials, store them in the production config. Not started; blocked on Daniel.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Enable the reminder job for patients after the test reminder succeeds",
+      "kind": "task",
+      "detail": "Go-live step. Only enable for patients after a test reminder has been sent to your own address and received.",
+      "project": "work/clinic-booking"
+     }
+    ],
+    "sessions": 4
+   },
+   {
+    "expected": 2,
+    "found": 2,
+    "hard_expected": 0,
+    "hard_found": 0,
+    "missed": [],
+    "wrong_open": [],
+    "duplicates": 2,
+    "extra": [],
+    "ok": [],
+    "closed_later": [
+     "Get the exact clinic address wording for the reminder email template"
+    ],
+    "closed_expected": 0,
+    "closed_ok": 0,
+    "closed_wrongly": [],
+    "leaks": [],
+    "quotes": 0,
+    "bad_quotes": [],
+    "errors": [],
+    "seconds": 20.8,
+    "usage": {
+     "calls": 4,
+     "input_tokens": 8,
+     "output_tokens": 2358,
+     "cache_creation_input_tokens": 3189,
+     "cache_read_input_tokens": 4859,
+     "cost_usd": 0.00186619,
+     "model_ms": 14497
+    },
+    "items": [
+     {
+      "text": "Ask Daniel (clinic IT) for the production SMTP credentials",
+      "kind": "external",
+      "detail": "Reminder emails still use the test SMTP account. Production sending needs Daniel's SMTP account.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Get the exact clinic address wording for the reminder email template",
+      "kind": "waiting",
+      "detail": "emails/reminder.html still has placeholder text where the clinic's address should go. The clinic must supply the wording.",
+      "project": "work/clinic-booking",
+      "done_at": "closed later in the run"
+     },
+     {
+      "text": "Swap the test SMTP settings for production ones and replace the address placeholder",
+      "kind": "task",
+      "detail": "Do this once Daniel's credentials and the clinic's address wording arrive. Covers the config and emails/reminder.html.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Verify the reminder cancel link end-to-end once production mail sending works",
+      "kind": "checklist",
+      "detail": "Check the signed link expires at appointment time, frees the slot, and shows the confirmation page. Real sending is still blocked, so this has not been tested.",
+      "project": "work/clinic-booking"
+     },
+     {
+      "text": "Send a test reminder to your own address before enabling reminders for patients",
+      "kind": "task",
+      "detail": "Do this once Daniel's production SMTP credentials arrive and are in the production config. Not yet done.",
+      "project": "work/clinic-booking"
+     }
+    ],
+    "sessions": 4
+   }
+  ]
+ }
+}
