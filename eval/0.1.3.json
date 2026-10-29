@@ -17,7 +17,8 @@
   "closed": "3/3",
   "closed_wrongly": 0,
   "leaks": 0,
-  "bad_quotes": "0/0",
+  "quoted": "0/77",
+  "unverified_quotes": 0,
   "errors": 0,
   "calls": 48,
   "input_tokens": 155042,
@@ -42,8 +43,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 4.4,
     "usage": {
@@ -55,6 +55,7 @@
      "cost_usd": 0.00028088,
      "model_ms": 2701
     },
+    "unverified": [],
     "items": [
      {
       "text": "Email Northwind Pay support for the API key rotation date and old-key grace period",
@@ -86,8 +87,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.8,
     "usage": {
@@ -99,6 +99,7 @@
      "cost_usd": 0.00046818,
      "model_ms": 4190
     },
+    "unverified": [],
     "items": [
      {
       "text": "Email Northwind Pay support for the API key rotation date and grace period",
@@ -136,8 +137,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 4.4,
     "usage": {
@@ -149,6 +149,7 @@
      "cost_usd": 0.00030367999999999997,
      "model_ms": 2722
     },
+    "unverified": [],
     "items": [
      {
       "text": "Email Northwind Pay support for the API key rotation date and old-key grace period",
@@ -182,8 +183,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.0,
     "usage": {
@@ -195,6 +195,7 @@
      "cost_usd": 0.00035919,
      "model_ms": 3438
     },
+    "unverified": [],
     "items": [
      {
       "text": "Decide whether to stay on SQLite or move to Postgres before adding sharing",
@@ -220,8 +221,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 4.4,
     "usage": {
@@ -233,6 +233,7 @@
      "cost_usd": 0.00028989,
      "model_ms": 2849
     },
+    "unverified": [],
     "items": [
      {
       "text": "Decide whether to stay on SQLite or move to Postgres before the sharing feature",
@@ -258,8 +259,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 4.6,
     "usage": {
@@ -271,6 +271,7 @@
      "cost_usd": 0.00029559000000000003,
      "model_ms": 3023
     },
+    "unverified": [],
     "items": [
      {
       "text": "Decide whether to stay on SQLite or move to Postgres before the sharing feature",
@@ -298,8 +299,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.9,
     "usage": {
@@ -311,6 +311,7 @@
      "cost_usd": 0.00049604,
      "model_ms": 4291
     },
+    "unverified": [],
     "items": [
      {
       "text": "Get Priya's album page mockups",
@@ -348,8 +349,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 6.1,
     "usage": {
@@ -361,6 +361,7 @@
      "cost_usd": 0.00048434,
      "model_ms": 4394
     },
+    "unverified": [],
     "items": [
      {
       "text": "Get Priya's album page mockups",
@@ -398,8 +399,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.8,
     "usage": {
@@ -411,6 +411,7 @@
      "cost_usd": 0.00047353999999999994,
      "model_ms": 4290
     },
+    "unverified": [],
     "items": [
      {
       "text": "Follow up with Priya on the album page mockups she promised by Thursday",
@@ -456,8 +457,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.2,
     "usage": {
@@ -469,6 +469,7 @@
      "cost_usd": 0.00015814000000000003,
      "model_ms": 1487
     },
+    "unverified": [],
     "items": [],
     "sessions": 1
    },
@@ -487,8 +488,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.0,
     "usage": {
@@ -500,6 +500,7 @@
      "cost_usd": 0.00015114000000000002,
      "model_ms": 1346
     },
+    "unverified": [],
     "items": [],
     "sessions": 1
    },
@@ -518,8 +519,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.1,
     "usage": {
@@ -531,6 +531,7 @@
      "cost_usd": 0.00015474,
      "model_ms": 1617
     },
+    "unverified": [],
     "items": [],
     "sessions": 1
    }
@@ -551,8 +552,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.4,
     "usage": {
@@ -564,6 +564,7 @@
      "cost_usd": 0.0001944,
      "model_ms": 1819
     },
+    "unverified": [],
     "items": [
      {
       "text": "Write API docs for the new /recipes/search endpoint",
@@ -589,8 +590,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.9,
     "usage": {
@@ -602,6 +602,7 @@
      "cost_usd": 0.0002029,
      "model_ms": 2225
     },
+    "unverified": [],
     "items": [
      {
       "text": "Write API docs for the new /recipes/search endpoint",
@@ -627,8 +628,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.3,
     "usage": {
@@ -640,6 +640,7 @@
      "cost_usd": 0.0002055,
      "model_ms": 1792
     },
+    "unverified": [],
     "items": [
      {
       "text": "Write API docs for the new /recipes/search endpoint",
@@ -667,8 +668,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 4.7,
     "usage": {
@@ -680,6 +680,7 @@
      "cost_usd": 0.00036433,
      "model_ms": 3094
     },
+    "unverified": [],
     "items": [
      {
       "text": "Change the default admin password on the shop router",
@@ -717,8 +718,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 4.6,
     "usage": {
@@ -730,6 +730,7 @@
      "cost_usd": 0.00034743,
      "model_ms": 3064
     },
+    "unverified": [],
     "items": [
      {
       "text": "Change the default admin password on the shop router",
@@ -767,8 +768,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.3,
     "usage": {
@@ -780,6 +780,7 @@
      "cost_usd": 0.00036483,
      "model_ms": 3662
     },
+    "unverified": [],
     "items": [
      {
       "text": "Change the default admin password on the shop router",
@@ -819,8 +820,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 9.2,
     "usage": {
@@ -832,6 +832,7 @@
      "cost_usd": 0.00057825,
      "model_ms": 5790
     },
+    "unverified": [],
     "items": [
      {
       "text": "Run the monthly payroll pre-check (was due before the 25th, now overdue)",
@@ -863,8 +864,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 10.6,
     "usage": {
@@ -876,6 +876,7 @@
      "cost_usd": 0.0005998500000000001,
      "model_ms": 6144
     },
+    "unverified": [],
     "items": [
      {
       "text": "Run the monthly payroll pre-check (deadline was the 25th; now overdue)",
@@ -909,8 +910,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 9.1,
     "usage": {
@@ -922,6 +922,7 @@
      "cost_usd": 0.00061005,
      "model_ms": 5924
     },
+    "unverified": [],
     "items": [
      {
       "text": "Run the monthly payroll pre-check",
@@ -957,8 +958,7 @@
     "closed_ok": 1,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 6.0,
     "usage": {
@@ -970,6 +970,7 @@
      "cost_usd": 0.00047346000000000004,
      "model_ms": 4331
     },
+    "unverified": [],
     "items": [
      {
       "text": "Deploy the committed upload fix to production tonight",
@@ -1003,8 +1004,7 @@
     "closed_ok": 1,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.0,
     "usage": {
@@ -1016,6 +1016,7 @@
      "cost_usd": 0.00040516,
      "model_ms": 3406
     },
+    "unverified": [],
     "items": [
      {
       "text": "Deploy the upload fix to production tonight",
@@ -1049,8 +1050,7 @@
     "closed_ok": 1,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.1,
     "usage": {
@@ -1062,6 +1062,7 @@
      "cost_usd": 0.00036316000000000007,
      "model_ms": 3513
     },
+    "unverified": [],
     "items": [
      {
       "text": "Deploy the image upload fix to production tonight",
@@ -1097,8 +1098,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 6.2,
     "usage": {
@@ -1110,6 +1110,7 @@
      "cost_usd": 0.00044579000000000005,
      "model_ms": 4874
     },
+    "unverified": [],
     "items": [
      {
       "text": "Revoke the exposed GitHub token and create a new one with the workflow scope",
@@ -1152,8 +1153,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 6.0,
     "usage": {
@@ -1165,6 +1165,7 @@
      "cost_usd": 0.00054599,
      "model_ms": 4337
     },
+    "unverified": [],
     "items": [
      {
       "text": "Revoke the GitHub token that was pasted into this chat",
@@ -1216,8 +1217,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 5.8,
     "usage": {
@@ -1229,6 +1229,7 @@
      "cost_usd": 0.00043299000000000007,
      "model_ms": 4097
     },
+    "unverified": [],
     "items": [
      {
       "text": "Revoke the exposed GitHub token and create a new one with the workflow scope",
@@ -1272,8 +1273,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 8.0,
     "usage": {
@@ -1285,6 +1285,7 @@
      "cost_usd": 0.00086945,
      "model_ms": 6745
     },
+    "unverified": [],
     "items": [
      {
       "text": "Add alerting when ingest lag goes over 5 minutes",
@@ -1318,8 +1319,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 7.1,
     "usage": {
@@ -1331,6 +1331,7 @@
      "cost_usd": 0.00075875,
      "model_ms": 5851
     },
+    "unverified": [],
     "items": [
      {
       "text": "Add alerting when ingest lag goes over 5 minutes",
@@ -1358,8 +1359,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 4.6,
     "usage": {
@@ -1371,6 +1371,7 @@
      "cost_usd": 0.00048154999999999997,
      "model_ms": 2829
     },
+    "unverified": [],
     "items": [
      {
       "text": "Add alerting when ingest lag goes over 5 minutes",
@@ -1398,8 +1399,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.2,
     "usage": {
@@ -1411,6 +1411,7 @@
      "cost_usd": 0.00019166000000000002,
      "model_ms": 1553
     },
+    "unverified": [],
     "items": [
      {
       "text": "Download the October statement from the bank website into the statements folder",
@@ -1436,8 +1437,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.3,
     "usage": {
@@ -1449,6 +1449,7 @@
      "cost_usd": 0.00018806,
      "model_ms": 1775
     },
+    "unverified": [],
     "items": [
      {
       "text": "Download the October statement from the bank website",
@@ -1474,8 +1475,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 3.9,
     "usage": {
@@ -1487,6 +1487,7 @@
      "cost_usd": 0.00019616000000000002,
      "model_ms": 2216
     },
+    "unverified": [],
     "items": [
      {
       "text": "Download the October statement from the bank website",
@@ -1517,8 +1518,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 18.5,
     "usage": {
@@ -1530,6 +1530,7 @@
      "cost_usd": 0.0017544799999999999,
      "model_ms": 12112
     },
+    "unverified": [],
     "items": [
      {
       "text": "Ask Daniel (clinic IT) for the production SMTP credentials",
@@ -1583,8 +1584,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 19.6,
     "usage": {
@@ -1596,6 +1596,7 @@
      "cost_usd": 0.0017421899999999998,
      "model_ms": 13594
     },
+    "unverified": [],
     "items": [
      {
       "text": "Ask Daniel (clinic IT) for the production SMTP credentials",
@@ -1648,8 +1649,7 @@
     "closed_ok": 0,
     "closed_wrongly": [],
     "leaks": [],
-    "quotes": 0,
-    "bad_quotes": [],
+    "quoted": 0,
     "errors": [],
     "seconds": 20.8,
     "usage": {
@@ -1661,6 +1661,7 @@
      "cost_usd": 0.00186619,
      "model_ms": 14497
     },
+    "unverified": [],
     "items": [
      {
       "text": "Ask Daniel (clinic IT) for the production SMTP credentials",

@@ -65,6 +65,21 @@ def dismissed(cfg):
         return []
 
 
+# Secrets that may turn up in transcripts; replaced before anything is stored or shown.
+_SECRET = re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}"
+                     r"|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}"
+                     r"|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"
+                     r"|-----BEGIN [A-Z ]*PRIVATE KEY-----")
+# `password=x`, or `password: x` when x has a digit in it (so "the token: it leaked" stays as it is)
+_SECRET_VALUE = re.compile(r"(?i)\b([a-z0-9_]*(?:password|passwd|secret|token|api_?key)[a-z0-9_]*"
+                           r"(?:\s*=\s*|:\s*(?=\S*\d)))(?!\[secret\])\S+")
+
+
+def redact(text):
+    """Text with API keys, tokens and `password=...` style values replaced by [secret]."""
+    return _SECRET_VALUE.sub(r"\1[secret]", _SECRET.sub("[secret]", text))
+
+
 def _norm(text):
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
@@ -107,6 +122,8 @@ def merge_followups(cfg, sess, found, resolved):
     including the same to-do reworded (see similar()) within the project."""
     added = closed = 0
     project = sess.get("project")
+    why = {r["id"]: r.get("evidence") for r in resolved if isinstance(r, dict) and r.get("id")}
+    resolved = set(why) | {r for r in resolved if isinstance(r, str)}
     with lock:
         items = load(cfg)
         gone = dismissed(cfg)
@@ -116,22 +133,28 @@ def merge_followups(cfg, sess, found, resolved):
                 and (not i.get("done_at") or _recent(i["done_at"]))]
         near += [d.get("text", "") for d in gone if d.get("project") == project]
         for f in found:
-            text = _clean(f.get("text") if isinstance(f, dict) else "", 200)
+            text = redact(_clean(f.get("text") if isinstance(f, dict) else "", 200))
             if not text or _norm(text) in seen or any(similar(text, t) for t in near):
                 continue
             seen.add(_norm(text))
             near.append(text)
             kind = f.get("kind") if f.get("kind") in KINDS else "task"
-            items.append({"id": secrets.token_hex(4), "text": text, "project": sess.get("project"),
-                          "created": _now(), "done_at": None, "source": "session", "kind": kind,
-                          "detail": _clean(f.get("detail"), 300) or None,
-                          "session": sess.get("id"), "cwd": sess.get("cwd"),
-                          "session_at": sess.get("end")})
+            item = {"id": secrets.token_hex(4), "text": text, "project": sess.get("project"),
+                    "created": _now(), "done_at": None, "source": "session", "kind": kind,
+                    "detail": redact(_clean(f.get("detail"), 300)) or None,
+                    "session": sess.get("id"), "cwd": sess.get("cwd"),
+                    "session_at": sess.get("end")}
+            if isinstance(f.get("evidence"), dict):
+                item["evidence"] = f["evidence"]
+            items.append(item)
             added += 1
         for i in items:
-            if i["id"] in resolved and not i.get("done_at") and i.get("project") == project:
+            if i["id"] in resolved and not i.get("done_at") and i.get("project") == project \
+                    and sess.get("id") not in i.get("not_closed_by", ()):
                 i["done_at"] = _now()
                 i["closed_by"] = sess.get("id")
+                if isinstance(why.get(i["id"]), dict):
+                    i["closed_evidence"] = why[i["id"]]
                 closed += 1
         if added or closed:
             _save(cfg, items)
@@ -165,6 +188,14 @@ def merge_duplicates(cfg, groups):
 
 def _clean(text, limit=MAX_TEXT):
     return " ".join(str(text or "").split())[:limit]
+
+
+def _reopen(item):
+    """Un-close an item. If a session closed it, that session may not close it again."""
+    if item.get("closed_by"):
+        item["not_closed_by"] = [*item.get("not_closed_by", []), item["closed_by"]][-10:]
+    item.pop("closed_by", None)
+    item.pop("closed_evidence", None)
 
 
 def apply(cfg, op):
@@ -216,7 +247,7 @@ def apply(cfg, op):
                 if "done" in op:
                     hit["done_at"] = (hit.get("done_at") or _now()) if op["done"] else None
                     if not op["done"]:
-                        hit.pop("closed_by", None)
+                        _reopen(hit)
                 if hit.get("done_at"):
                     hit["doing"] = False
                     hit.pop("status", None)
@@ -226,7 +257,7 @@ def apply(cfg, op):
                 hit.pop("status", None)
             elif kind == "undo":
                 hit["done_at"] = None
-                hit.pop("closed_by", None)
+                _reopen(hit)
             elif kind == "delete":
                 items.remove(hit)
                 if hit.get("source") == "session":  # remember it, so it isn't picked up again

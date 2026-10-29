@@ -31,7 +31,11 @@ def remote_hint(cfg):
 
 
 def cmd_serve(cfg, args):
-    srv = server.make_server(cfg)
+    try:
+        srv = server.make_server(cfg)
+    except OSError as exc:
+        raise SystemExit(f"Can't serve on port {cfg.port}: {exc.strerror or exc}. Something else is using it "
+                         f"(another `sessionpulse serve`/`tray`?); stop that, or set `port` in {config.CONFIG_FILE}.")
     followups.start_worker(cfg)
     print(f"Session Pulse on {cfg.url}\n" + (remote_hint(cfg) if headless() else "Open it with: sessionpulse open"),
           flush=True)

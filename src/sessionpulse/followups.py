@@ -31,6 +31,8 @@ USER_CHARS = 1200      # per prompt
 CLAUDE_CHARS = 2500    # per reply
 MAX_ITEMS = 12
 MAX_OPEN = 150         # open to-dos shown to the model per project
+QUOTE_CHARS = 160
+EXCERPT_CHARS = 4000   # per turn, in the dashboard's transcript excerpt
 TIMEOUT = 180
 BACKOFF = (timedelta(hours=1), timedelta(hours=6))  # wait after a session's 1st and 2nd failure;
                                                     # after the 3rd, wait until its transcript grows
@@ -60,7 +62,12 @@ Put the reason or context in `detail` (max 200 characters). Never copy passwords
 You also get the user's currently open to-dos for this project, with ids. Put an id in `resolved` only \
 if this transcript clearly shows that item was completed. Do not repeat an open to-do as a new item, even \
 in different words: if an open to-do already covers the work, leave it out. Do not re-add anything listed \
-under "dismissed"."""
+under "dismissed".
+
+Turns are numbered (### #12 USER ...). For every item, set `quote` to a short passage copied exactly, word for \
+word, from one turn (max 160 characters) that shows the item is still open, preferring the user's own words, and \
+`ref` to that turn's number. Give each `resolved` to-do the same way: its id, and a `quote` and `ref` showing it \
+was done. Never put passwords, keys or tokens in a quote."""
 
 SCHEMA = {
     "type": "object",
@@ -68,9 +75,12 @@ SCHEMA = {
         "items": {"type": "array", "maxItems": MAX_ITEMS, "items": {
             "type": "object",
             "properties": {"text": {"type": "string"}, "kind": {"type": "string", "enum": list(KINDS)},
-                           "detail": {"type": "string"}},
-            "required": ["text", "kind"]}},
-        "resolved": {"type": "array", "items": {"type": "string"}},
+                           "detail": {"type": "string"}, "quote": {"type": "string"}, "ref": {"type": "integer"}},
+            "required": ["text", "kind", "quote"]}},
+        "resolved": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"id": {"type": "string"}, "quote": {"type": "string"}, "ref": {"type": "integer"}},
+            "required": ["id"]}},
     },
     "required": ["items", "resolved"],
 }
@@ -85,9 +95,10 @@ class NotReady(RuntimeError):
 
 
 # ---------- transcript digest ----------
-def digest(path, project="", limit=DIGEST_CHARS):
-    """The user prompts and Claude's prose replies, oldest first, trimmed to fit."""
-    parts = []
+def conversation(path):
+    """The main thread's user prompts and Claude's prose replies, oldest first, as
+    [{"uuid", "at", "role", "text"}]. Tool calls, subagents and CLI noise are left out."""
+    out = []
     with open(path, errors="replace") as f:
         for line in f:
             try:
@@ -100,17 +111,73 @@ def digest(path, project="", limit=DIGEST_CHARS):
             body = reader.text_of(msg.get("content")).strip()
             if not body or (e["type"] == "user" and reader.is_noise(body)):
                 continue
-            body = re.sub(r"\n{3,}", "\n\n", body)
-            cap = USER_CHARS if e["type"] == "user" else CLAUDE_CHARS
-            if len(body) > cap:
-                body = body[:cap // 2] + "\n[…]\n" + body[-cap // 2:]
-            when = str(e.get("timestamp", ""))[:16].replace("T", " ")
-            parts.append(f"### {'USER' if e['type'] == 'user' else 'CLAUDE'} {when}\n{body}")
+            out.append({"uuid": e.get("uuid"), "at": e.get("timestamp"), "role": e["type"],
+                        "text": re.sub(r"\n{3,}", "\n\n", body)})
+    return out
+
+
+def digest(path, project="", limit=DIGEST_CHARS, turns=None):
+    """The conversation as the model reads it, turns numbered #1.., trimmed to fit.
+    If `turns` is a list, each numbered turn is added to it (with the text the model saw)."""
+    parts = []
+    for n, t in enumerate(conversation(path), 1):
+        body, cap = t["text"], USER_CHARS if t["role"] == "user" else CLAUDE_CHARS
+        if len(body) > cap:
+            body = body[:cap // 2] + "\n[…]\n" + body[-cap // 2:]
+        when = str(t["at"] or "")[:16].replace("T", " ")
+        parts.append(f"### #{n} {'USER' if t['role'] == 'user' else 'CLAUDE'} {when}\n{body}")
+        if turns is not None:
+            turns.append({**t, "n": n, "text": body})
     text = "\n\n".join(parts)
     if len(text) > limit:  # keep the opening request and the end, where open items get summed up
         head = parts[0][:3000] if parts else ""
         text = head + "\n\n[… earlier part of the session left out …]\n\n" + text[-(limit - len(head)):]
     return f"Project: {project}\n\n{text}"
+
+
+def _plain(text):
+    """Text reduced for quote matching: lower case, straight quotes, single spaces."""
+    text = str(text or "").lower().translate(str.maketrans("‘’“”–—", "''\"\"--"))
+    return " ".join(text.replace("`", "").split())
+
+
+def locate(quote, turns, ref=None):
+    """The turn a quote was copied from, or None if no turn contains it.
+    A quote with "..." in it matches when every piece is in the same turn."""
+    pieces = [p.strip(" \"'.,;:") for p in re.split(r"\.\.\.|…|\[…\]", _plain(quote))]
+    pieces = [p for p in pieces if len(p) >= 4]
+    if not pieces or sum(map(len, pieces)) < 12:
+        return None
+    for t in sorted(turns, key=lambda t: t.get("n") != ref):  # the turn the model named first
+        plain = t.get("plain") or t.setdefault("plain", _plain(t["text"]))
+        if all(p in plain for p in pieces):
+            return t
+    return None
+
+
+def evidence(reply, turns):
+    """Where a follow-up (or a closure) comes from: the turn and the quote, if the quote is real."""
+    quote = reply.get("quote") if isinstance(reply.get("quote"), str) else ""
+    ref = reply.get("ref") if isinstance(reply.get("ref"), int) else None
+    t = locate(quote, turns, ref)
+    if not t:
+        return None
+    return {"quote": todos.redact(" ".join(quote.split()))[:QUOTE_CHARS], "uuid": t.get("uuid"),
+            "at": t.get("at"), "role": t["role"]}
+
+
+def excerpt(path, uuid, around=2):
+    """The turn with this uuid and `around` turns either side, secrets removed, or None."""
+    turns = conversation(path)
+    at = next((n for n, t in enumerate(turns) if t["uuid"] and t["uuid"] == uuid), None)
+    if at is None:
+        return None
+    out = []
+    for t in turns[max(0, at - around):at + around + 1]:
+        text = t["text"] if len(t["text"]) <= EXCERPT_CHARS else t["text"][:EXCERPT_CHARS] + " […]"
+        out.append({"uuid": t["uuid"], "at": t["at"], "role": t["role"], "text": todos.redact(text),
+                    "hit": t["uuid"] == uuid})
+    return out
 
 
 # ---------- running claude ----------
@@ -259,11 +326,17 @@ def _save_state(cfg, st):
 
 # ---------- one session ----------
 def checked(out, shown):
-    """The model's reply with anything malformed dropped, and `resolved` limited to ids it was shown."""
+    """The model's reply with anything malformed dropped, and `resolved` limited to ids it was shown.
+    Resolved entries come back as dicts: {"id", "quote"?, "ref"?}."""
     items = out.get("items") if isinstance(out.get("items"), list) else []
     items = [f for f in items if isinstance(f, dict) and isinstance(f.get("text"), str) and f["text"].strip()]
-    resolved = out.get("resolved") if isinstance(out.get("resolved"), list) else []
-    return items[:MAX_ITEMS], [r for r in dict.fromkeys(resolved) if isinstance(r, str) and r in shown]
+    resolved, seen = [], set()
+    for r in out.get("resolved") if isinstance(out.get("resolved"), list) else []:
+        r = {"id": r} if isinstance(r, str) else r
+        if isinstance(r, dict) and isinstance(r.get("id"), str) and r["id"] in shown and r["id"] not in seen:
+            seen.add(r["id"])
+            resolved.append(r)
+    return items[:MAX_ITEMS], resolved
 
 
 def process(cfg, sess, path, usage=None):
@@ -275,12 +348,15 @@ def process(cfg, sess, path, usage=None):
                     and i.get("project") == project),
                    key=lambda i: i.get("created") or "", reverse=True)[:MAX_OPEN]
     dismissed = [d for d in todos.dismissed(cfg) if d.get("project") == project][-40:]
-    prompt = digest(path, project)
+    turns = []
+    prompt = digest(path, project, turns=turns)
     prompt += "\n\n## Open to-dos for this project\n" + (
         "\n".join(f"- [{i['id']}] {i['text']}" for i in open_) or "(none)")
     prompt += "\n\n## Dismissed (never re-add)\n" + (
         "\n".join(f"- {d['text']}" for d in dismissed) or "(none)")
     found, resolved = checked(ask_claude(cfg, prompt, usage=usage), {i["id"] for i in open_})
+    for r in found + resolved:
+        r["evidence"] = evidence(r, turns)
     return todos.merge_followups(cfg, sess, found, resolved)
 
 

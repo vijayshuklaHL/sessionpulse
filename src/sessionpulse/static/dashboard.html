@@ -114,7 +114,7 @@ td.proj { white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow
 .detail dd { margin: 0; word-break: break-word; }
 code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface-2);
   padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); }
-.copy { font: inherit; font-size: 11px; border: 1px solid var(--border); background: var(--surface-1);
+.copy, .why-btn { font: inherit; font-size: 11px; border: 1px solid var(--border); background: var(--surface-1);
   color: var(--text-secondary); border-radius: 5px; padding: 1px 6px; cursor: pointer; margin-left: 6px; }
 .scroll { overflow-x: auto; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
@@ -173,7 +173,7 @@ input[type=search] { flex: 1; min-width: 200px; }
   border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; white-space: nowrap; }
 .todo .detail { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .todo .from { display: block; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-.todo .from .copy { margin-left: 4px; }
+.todo .from .copy, .todo .from .why-btn { margin-left: 4px; }
 .kindtag { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
   border-radius: 5px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; white-space: nowrap; }
 /* One color per category, shared by tags, dots, board columns and card stripes. */
@@ -245,13 +245,34 @@ a:hover { text-decoration: underline; }
 .card2 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; font-size: 11px; color: var(--text-muted); }
 .card2 .meta .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .card2 .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; align-items: center; margin-left: auto; }
-.card2 .copy, .card2 select { white-space: nowrap; margin-left: 0; }
+.card2 .copy, .card2 .why-btn, .card2 select { white-space: nowrap; margin-left: 0; }
 .card2 select { font: inherit; font-size: 11px; padding: 1px 4px; border-radius: 5px; border: 1px solid var(--border);
   background: var(--surface-1); color: var(--text-secondary); }
 .card2 .x { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
 .card2 .x:hover { color: var(--crit); }
 .col-empty { font-size: 12px; color: var(--text-muted); padding: 10px 4px; text-align: center; }
 [hidden] { display: none !important; }
+.why { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / .35); display: flex; justify-content: flex-end; }
+.why-box { background: var(--surface-1); color: var(--text-primary); width: min(560px, 100%); height: 100%; overflow-y: auto;
+  padding: 18px 20px 28px; border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgb(0 0 0 / .15); }
+.why-head { display: flex; gap: 10px; align-items: flex-start; }
+.why-head h2 { font-size: 16px; margin: 0; flex: 1; overflow-wrap: anywhere; }
+.why-close { border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 2px; }
+.why h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: 18px 0 6px; }
+.why p { margin: 6px 0; font-size: 13px; overflow-wrap: anywhere; }
+.why .muted { color: var(--text-muted); }
+.why code { word-break: break-all; }
+.why .btn { font: inherit; font-size: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary);
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.why-quote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 6px 6px 0; }
+.why-quote blockquote { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.why-quote figcaption { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.linkish { font: inherit; border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; }
+.turn { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: 12.5px; }
+.turn.hit { border-color: var(--accent); }
+.turn .who { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+.turn .said { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow-y: auto; }
+.turn mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; border-radius: 2px; }
 .wrap:has(#boardview:not([hidden])) { max-width: none; }
 @media (max-width: 640px) {
   .tabs { margin-left: 0; }
@@ -391,6 +412,10 @@ a:hover { text-decoration: underline; }
 </div>
 </div>
 
+<aside class="why" id="why" hidden role="dialog" aria-modal="true" aria-labelledby="why-title">
+  <div class="why-box"><div class="why-head"><h2 id="why-title"></h2>
+    <button class="why-close" id="why-close" aria-label="Close">×</button></div><div id="why-body"></div></div>
+</aside>
 <script>
 const $ = s => document.querySelector(s);
 const SERIES = 8;
@@ -658,8 +683,8 @@ const isOpen = i => !i.done_at && !PARKED.includes(i.status);
 const todoRow = (i, done, grouped) => {
   const born = i.session_at || i.created;
   const from = i.source === "session" && i.session
-    ? `<span class="from">From a session on ${esc(fmtD(i.session_at || i.created))}<button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens this session">Copy resume</button></span>` : "";
-  const auto = done && i.closed_by ? `<span class="from">Closed automatically by a later session. Untick if that's wrong.</span>` : "";
+    ? `<span class="from">From a session on ${esc(fmtD(i.session_at || i.created))}<button class="why-btn" data-why="${esc(i.id)}" title="Where this came from">Why?</button><button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens this session">Copy resume</button></span>` : "";
+  const auto = done && i.closed_by ? `<span class="from">Closed automatically by a later session.<button class="why-btn" data-why="${esc(i.id)}" title="What closed it">Why?</button> Untick if that's wrong.</span>` : "";
   return `<li class="todo${done ? " is-done" : ""}">
   <input type="checkbox" data-id="${esc(i.id)}" ${done ? "checked" : ""} aria-label="${done ? "Mark not done" : "Mark done"}">
   <span class="txt">${i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind] || i.kind)}</span>` : ""}${esc(i.text)}${i.project && !grouped ? `<span class="tag">${esc(i.project)}</span>` : ""}
@@ -803,7 +828,7 @@ const card = i => {
     <div class="meta">${i.doing && !i.done_at && !parked && BY === "kind" ? `<span class="doing-pill">Doing</span>` : ""}${i.project ? `<span class="tag" title="${esc(i.project)}">${esc(i.project.split("/").pop())}</span>` : ""}
       <span title="${i.done_at ? "Done " + esc(fmtD(i.done_at)) : (i.session_at ? "Discussed " : "Added ") + esc(fmtD(born))}">${i.done_at ? "done " + ago(Date.parse(i.done_at)) : ago(Date.parse(born))}</span>
       ${i.closed_by && i.done_at ? `<span title="A later session showed this was done">· auto</span>` : ""}
-      <span class="acts">${i.session && !i.done_at && !parked ? `<button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens the session this came from">Resume</button>` : ""}
+      <span class="acts">${i.source === "session" && i.session ? `<button class="why-btn" data-why="${esc(i.id)}" title="${i.closed_by && i.done_at ? "What closed it" : "Where this came from"}">Why?</button>` : ""}${i.session && !i.done_at && !parked ? `<button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens the session this came from">Resume</button>` : ""}
         <select data-move="${esc(i.id)}" aria-label="Move to"><option value="">Move…</option>${cols.filter(c => c[0] !== here).map(c => `<option value="${c[0]}">${c[1]}</option>`).join("")}</select>
         <button class="x" data-del="${esc(i.id)}" title="${i.source === "session" ? "Dismiss (won't be picked up again)" : "Delete"}" aria-label="Delete">×</button></span>
     </div></div>`;
@@ -866,6 +891,68 @@ B.addEventListener("click", ev => {
   const d = ev.target.closest(".d"); if (d) { d.classList.toggle("full"); return; }
   const x = ev.target.closest("[data-del]"); if (x) todoOp({op: "delete", id: x.dataset.del});
 });
+
+// ---------- why is this here? ----------
+const WHY = $("#why");
+const resumeCmd = i => `cd ${i.cwd || "~"} && claude --resume ${i.session}`;
+const quoteBlock = (ev, session) => `<figure class="why-quote"><blockquote>${esc(ev.quote)}</blockquote>
+  <figcaption>${ev.role === "user" ? "You" : "Claude"}${ev.at ? ", " + esc(fmtD(ev.at)) : ""}${ev.uuid && session
+    ? ` · <button class="linkish" data-excerpt="${esc(ev.uuid)}" data-session="${esc(session)}">Show in transcript</button>` : ""}</figcaption></figure>`;
+function openWhy(id) {
+  const i = (DATA.todos || []).find(t => t.id === id); if (!i) return;
+  const auto = i.done_at && i.closed_by;
+  $("#why-title").textContent = i.text;
+  $("#why-body").innerHTML = `<p class="muted">${i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind] || i.kind)}</span> ` : ""}${esc(i.project || "No project")}</p>
+    <h3>Where it came from</h3>
+    ${i.session ? `<p>Picked out of a session from ${esc(fmtD(i.session_at || i.created))} (${esc(ago(Date.parse(i.session_at || i.created)))}).</p>`
+      : `<p>You added it yourself, ${esc(fmtD(i.created))}.</p>`}
+    ${i.evidence ? quoteBlock(i.evidence, i.session)
+      : i.session ? `<p class="muted">No quote: this item is from before Session Pulse kept them, or the model's quote wasn't found in the transcript.</p>` : ""}
+    ${i.detail ? `<p>${esc(i.detail)}</p>` : ""}
+    ${i.session ? `<p><code>${esc(resumeCmd(i))}</code><button class="copy" data-copy="${esc(resumeCmd(i))}">Copy resume</button></p>` : ""}
+    ${auto ? `<h3>Why it was closed</h3><p>A later session showed it was done (closed ${esc(fmtD(i.done_at))}).</p>
+      ${i.closed_evidence ? quoteBlock(i.closed_evidence, i.closed_by) : ""}
+      <p><button class="btn" data-reopen="${esc(i.id)}">Reopen: it isn't done</button></p>` : ""}
+    <div id="why-excerpt"></div>`;
+  WHY.hidden = false; $("#why-close").focus();
+}
+const closeWhy = () => { WHY.hidden = true; };
+function markQuote(text, quote) {  // highlight the quoted words in the transcript turn
+  let html = esc(text);
+  for (const piece of quote.split(/\.\.\.|…/).map(s => s.trim().replace(/^["']|["']$/g, "")).filter(s => s.length >= 4)) {
+    const words = esc(piece).split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    html = html.replace(new RegExp(words.join("\\s+"), "i"), m => `<mark>${m}</mark>`);
+  }
+  return html;
+}
+async function showExcerpt(btn) {
+  const box = $("#why-excerpt"), quote = btn.closest("figure")?.querySelector("blockquote")?.textContent || "";
+  box.innerHTML = `<p class="muted">Loading…</p>`;
+  try {
+    const r = await fetch(`/api/excerpt?session=${encodeURIComponent(btn.dataset.session)}&uuid=${encodeURIComponent(btn.dataset.excerpt)}`);
+    if (r.status === 403) { location.reload(); return; }
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 404) { box.innerHTML = `<p class="muted">That part of the transcript is gone. Claude Code deletes old transcripts after a while.</p>`; return; }
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    box.innerHTML = `<h3>In the transcript</h3>` + j.turns.map(t => `<div class="turn${t.hit ? " hit" : ""}">
+      <div class="who">${t.role === "user" ? "You" : "Claude"} · ${esc(fmtD(t.at))}</div>
+      <div class="said">${t.hit ? markQuote(t.text, quote) : esc(t.text)}</div></div>`).join("");
+    box.querySelector(".hit")?.scrollIntoView({block: "nearest"});
+  } catch (e) { box.innerHTML = `<p class="muted">Couldn't load it: ${esc(e.message)}</p>`; }
+}
+document.addEventListener("click", ev => {  // before the lists' own handlers
+  const w = ev.target.closest("[data-why]");
+  if (w) { ev.stopPropagation(); ev.preventDefault(); openWhy(w.dataset.why); }
+}, true);
+WHY.addEventListener("click", async ev => {
+  if (ev.target === WHY || ev.target.closest("#why-close")) return closeWhy();
+  const cp = ev.target.closest(".copy");
+  if (cp) { navigator.clipboard?.writeText(cp.dataset.copy); cp.textContent = "Copied"; return; }
+  const ex = ev.target.closest("[data-excerpt]"); if (ex) return showExcerpt(ex);
+  const ro = ev.target.closest("[data-reopen]");
+  if (ro && await todoOp({op: "undo", id: ro.dataset.reopen})) closeWhy();
+});
+addEventListener("keydown", ev => { if (ev.key === "Escape" && !WHY.hidden) closeWhy(); });
 
 // ---------- wiring ----------
 function render() {

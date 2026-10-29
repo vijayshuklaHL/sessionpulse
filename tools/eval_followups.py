@@ -14,7 +14,8 @@ the real followups.process() on them with `claude -p`, and scores the result:
   duplicates    extra open items for work already found (in any project)
   closures      seeded to-dos correctly closed, and wrongly closed
   leaks         secrets copied into an item
-  bad_quotes    item quotes that aren't in the transcript (once items have quotes)
+  quoted        items whose quote was found in the transcript (only those keep one)
+  unverified    quotes the model gave that aren't in the transcript (so were dropped)
   tokens, cost  what the model calls used, from the `claude -p` JSON
 
 It calls the real model (counts toward your Claude usage) and never touches
@@ -23,6 +24,7 @@ your own data. Run by hand:
   python3 tools/eval_followups.py --out eval/0.1.3.json
   python3 tools/eval_followups.py --only 07,08 --repeat 3
   python3 tools/eval_followups.py --compare eval/0.1.3.json eval/0.2.0.json
+  python3 tools/eval_followups.py --rescore eval/0.1.3.json   # after changing a case's rules
 """
 import argparse
 import json
@@ -46,6 +48,7 @@ from sessionpulse import __version__, config, followups, reader, todos  # noqa: 
 CASES = ROOT / "tests" / "fixtures" / "followups"
 START = datetime(2026, 10, 20, 9, 0).astimezone()
 _real_run = subprocess.run
+_real_evidence = followups.evidence
 _local = threading.local()
 
 
@@ -109,18 +112,15 @@ def filler_turns(count):
 
 
 # ---------- scoring ----------
-def matches(text, rule):
-    """Every group of the rule has one of its words in the text, and none of the `unless` words do."""
-    text = text.lower()
-    return (all(any(w in text for w in group) for group in rule["match"])
+def matches(text, rule, detail=""):
+    """Every group of the rule has one of its words in the text or detail, and none of the
+    `unless` words is in the text."""
+    text, full = text.lower(), f"{text} {detail or ''}".lower()
+    return (all(any(w in full for w in group) for group in rule["match"])
             and not any(w in text for w in rule.get("unless", ())))
 
 
-def _squash(text):
-    return re.sub(r"\s+", " ", text).strip().lower()
-
-
-def score(spec, added, final, digests):
+def score(spec, added, final):
     """Score one run on the list as it ends. `added` are the new items, `final` the whole list."""
     exp = spec["expect"]
     hits = {n: 0 for n in range(len(exp["open"]))}
@@ -129,11 +129,10 @@ def score(spec, added, final, digests):
         if item.get("done_at"):  # added, then closed by a later session: judge the list as it ends
             later.append(item["text"])
             continue
-        full = f"{item['text']} {item.get('detail') or ''}"
-        found = [n for n, rule in enumerate(exp["open"]) if matches(full, rule)]
-        if found:
-            hits[found[0]] += 1
-        elif any(matches(full, rule) for rule in exp.get("ok", ())):
+        found = [n for n, rule in enumerate(exp["open"]) if matches(item["text"], rule, item.get("detail"))]
+        if found:  # credit an expected item not found yet, so a near match isn't counted as a duplicate
+            hits[next((n for n in found if not hits[n]), found[0])] += 1
+        elif any(matches(item["text"], rule, item.get("detail")) for rule in exp.get("ok", ())):
             fine.append(item["text"])
         elif any(matches(item["text"], rule) for rule in exp.get("not_open", ())):
             wrong.append(item["text"])
@@ -142,8 +141,6 @@ def score(spec, added, final, digests):
     easy = [n for n, rule in enumerate(exp["open"]) if not rule.get("hard")]
     hard = [n for n, rule in enumerate(exp["open"]) if rule.get("hard")]
     by_id = {i["id"]: i for i in final}
-    text = " ".join(_squash(d) for d in digests)
-    quoted = [i for i in added if i.get("quote")]
     return {
         "expected": len(easy), "found": sum(1 for n in easy if hits[n]),
         "hard_expected": len(hard), "hard_found": sum(1 for n in hard if hits[n]),
@@ -158,8 +155,7 @@ def score(spec, added, final, digests):
         "closed_wrongly": [i for i in exp.get("kept_open", ()) if by_id.get(i, {}).get("done_at")],
         "leaks": [s for s in exp.get("never_contains", ())
                   for i in added if s.lower() in f"{i['text']} {i.get('detail') or ''}".lower()],
-        "quotes": len(quoted),
-        "bad_quotes": [i["quote"] for i in quoted if _squash(i["quote"]) not in text],
+        "quoted": sum(1 for i in added if i.get("evidence")),
     }
 
 
@@ -182,9 +178,18 @@ def _counting_run(cmd, *a, **kw):
     return r
 
 
+def _checking_evidence(reply, turns):
+    """followups.evidence, remembering the quotes it couldn't find."""
+    ev = _real_evidence(reply, turns)
+    if ev is None and getattr(_local, "unverified", None) is not None:
+        _local.unverified.append(str(reply.get("quote"))[:200])
+    return ev
+
+
 def run_case(name, spec, model, claude_command=""):
     _local.usage = dict.fromkeys(("calls", "input_tokens", "output_tokens", "cache_creation_input_tokens",
                                   "cache_read_input_tokens", "cost_usd", "model_ms"), 0)
+    _local.unverified = []
     began = time.monotonic()
     errors = []
     with tempfile.TemporaryDirectory(prefix="sp-eval-") as tmp:
@@ -196,9 +201,7 @@ def run_case(name, spec, model, claude_command=""):
                 for i in spec.get("seed", ())]
         if seed:
             todos._save(cfg, seed)
-        digests = []
         for sess, path in build(name, spec, cfg.claude):
-            digests.append(followups.digest(path, sess["project"]))
             try:
                 followups.process(cfg, sess, path)
             except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
@@ -206,9 +209,10 @@ def run_case(name, spec, model, claude_command=""):
         final = todos.load(cfg)
     seeded = {i["id"] for i in seed}
     added = [i for i in final if i["id"] not in seeded]
-    result = score(spec, added, final, digests)
+    result = score(spec, added, final)
     result.update(errors=errors, seconds=round(time.monotonic() - began, 1), usage=_local.usage,
-                  items=[{k: i.get(k) for k in ("text", "kind", "detail", "project", "quote", "done_at") if i.get(k)}
+                  unverified=_local.unverified,
+                  items=[{k: i.get(k) for k in ("text", "kind", "detail", "project", "evidence", "done_at") if i.get(k)}
                          for i in added])
     return result
 
@@ -240,7 +244,8 @@ def summarise(runs):
         "closed": f"{tot('closed_ok')}/{tot('closed_expected')}",
         "closed_wrongly": count("closed_wrongly"),
         "leaks": count("leaks"),
-        "bad_quotes": f"{count('bad_quotes')}/{tot('quotes')}",
+        "quoted": f"{tot('quoted')}/{sum(len(r['items']) for r in flat)}",
+        "unverified_quotes": sum(len(r.get("unverified", ())) for r in flat),
         "errors": count("errors"),
         "calls": use("calls"),
         "input_tokens": use("input_tokens") + use("cache_creation_input_tokens") + use("cache_read_input_tokens"),
@@ -259,10 +264,26 @@ def show_case(name, r):
     for i in r["items"]:
         print(f"     + [{i.get('kind')}] {i['text']}" + (f"   ({i['project']})" if i.get("project") else ""))
     for k, label in (("missed", "missed"), ("wrong_open", "wrongly open"), ("extra", "not expected"),
-                     ("closed_later", "added, closed later"), ("closed_wrongly", "closed wrongly"), ("leaks", "LEAKED"), ("bad_quotes", "quote not found"),
+                     ("closed_later", "added, closed later"), ("closed_wrongly", "closed wrongly"), ("leaks", "LEAKED"), ("unverified", "quote not in transcript"),
                      ("errors", "error")):
         for v in r[k]:
             print(f"     - {label}: {v}")
+
+
+def rescore(path):
+    """Score saved answers again with the cases' current rules. No model calls."""
+    data, cases = json.loads(Path(path).read_text()), load_cases()
+    kept = ("closed_ok", "closed_expected", "closed_wrongly", "errors", "seconds", "usage", "unverified",
+            "items", "sessions")
+    for name, runs in data["cases"].items():
+        for r in runs:
+            added = [dict(i, id=str(n)) for n, i in enumerate(r["items"])]
+            keep = {k: r.get(k, []) for k in kept}
+            r.clear()
+            r.update(score(cases[name], added, added), **keep)
+    data["summary"] = summarise(data["cases"])
+    Path(path).write_text(json.dumps(data, indent=1) + "\n")
+    return data["summary"]
 
 
 def compare(a_path, b_path):
@@ -283,7 +304,12 @@ def main(argv=None):
     p.add_argument("--label", help="name for this run in the results (default: sessionpulse version)")
     p.add_argument("--out", help="write the results as JSON here")
     p.add_argument("--compare", nargs=2, metavar=("A", "B"), help="compare two result files and exit")
+    p.add_argument("--rescore", metavar="FILE", help="score a result file again with the current rules and exit")
     args = p.parse_args(argv)
+    if args.rescore:
+        for k, v in rescore(args.rescore).items():
+            print(f"  {k:24}{v}")
+        return 0
     if args.compare:
         compare(*args.compare)
         return 0
@@ -307,6 +333,7 @@ def main(argv=None):
         return name, r
 
     with unittest.mock.patch.object(followups.subprocess, "run", _counting_run), \
+            unittest.mock.patch.object(followups, "evidence", _checking_evidence), \
             ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
         for name, r in pool.map(one, jobs):
             runs[name].append(r)

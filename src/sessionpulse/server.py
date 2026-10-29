@@ -85,9 +85,27 @@ def make_handler(cfg: config.Config, tok: str):
                 data["followups"] = {"enabled": cfg.followups, **followups.status,
                                      "week": followups.usage_totals(cfg, 7), "failing": len(followups.failing(cfg))}
                 return self.send(200, json.dumps(data).encode(), "application/json")
+            if url.path == "/api/excerpt":
+                return self.excerpt(parse_qs(url.query))
             if url.path in ("/", "/index.html"):
                 return self.send(200, page, "text/html; charset=utf-8")
             self.send(404, b"not found", "text/plain")
+
+        def excerpt(self, q):
+            """A few turns of a session's transcript around one turn: where a follow-up came from."""
+            sid, uuid = q.get("session", [""])[0], q.get("uuid", [""])[0]
+            if not sid or not uuid or len(sid) > 64 or len(uuid) > 64:
+                return self.send(400, b'{"error": "session and uuid are required"}', "application/json")
+            with reader.lock:
+                sess = next((s for s in reader.snapshot(cfg)["sessions"] if s["id"] == sid), None)
+            try:
+                turns = followups.excerpt(sess["transcript"], uuid) if sess and sess.get("transcript") else None
+            except OSError:
+                turns = None
+            if turns is None:
+                return self.send(404, b'{"error": "that part of the transcript is gone"}', "application/json")
+            return self.send(200, json.dumps({"session": sid, "project": sess.get("project"), "cwd": sess.get("cwd"),
+                                              "turns": turns}).encode(), "application/json")
 
         def do_POST(self):
             # Writes need, on top of the cookie: a JSON content type (a plain cross-site

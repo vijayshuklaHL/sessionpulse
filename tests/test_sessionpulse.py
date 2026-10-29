@@ -273,6 +273,22 @@ class ServerTests(Fixture):
         except urllib.error.HTTPError as e:
             return e.code, e.read()
 
+    def test_excerpt_shows_turns_around_one(self):
+        rows = [user(self.t0, f"prompt {n}") | {"uuid": f"u{n}"} for n in range(6)]
+        rows[3]["message"]["content"] = "my DB_PASSWORD=hunter2 is set"
+        self.write(rows)
+        reader._cache.clear()
+        cookie = self.get(f"/?token={config.token(self.cfg)}")[1]["Set-Cookie"].split(";")[0]
+        code, _, body = self.get(f"/api/excerpt?session={SID}&uuid=u3", {"Cookie": cookie})
+        self.assertEqual(code, 200)
+        turns = json.loads(body)["turns"]
+        self.assertEqual([t["uuid"] for t in turns], ["u1", "u2", "u3", "u4", "u5"])
+        self.assertEqual([t["hit"] for t in turns].index(True), 2)
+        self.assertEqual(turns[2]["text"], "my DB_PASSWORD=[secret] is set")
+        self.assertEqual(self.get(f"/api/excerpt?session={SID}&uuid=nope", {"Cookie": cookie})[0], 404)
+        self.assertEqual(self.get("/api/excerpt?session=x", {"Cookie": cookie})[0], 400)
+        self.assertEqual(self.get(f"/api/excerpt?session={SID}&uuid=u3")[0], 403)  # needs the token
+
     def test_todo_post_round_trip(self):
         code, body = self.post({"op": "add", "text": "ship it", "project": "demo"})
         self.assertEqual(code, 200)
@@ -447,6 +463,14 @@ class StatusTests(Fixture):
         run.assert_called_once()
         self.assertIn("status.json", out.getvalue())
 
+    def test_serve_on_busy_port_says_so(self):
+        with unittest.mock.patch.object(config, "load", return_value=self.cfg), \
+             unittest.mock.patch.object(cli.server, "make_server", side_effect=OSError(98, "Address already in use")), \
+             self.assertRaises(SystemExit) as stop:
+            cli.main(["serve"])
+        self.assertIn(f"port {self.cfg.port}", str(stop.exception))
+        self.assertIn("config.toml", str(stop.exception))
+
     def test_install_daemon_autostart(self):
         target = Path(self.tmp.name) / "autostart" / "sessionpulse.desktop"
         with unittest.mock.patch.object(install, "AUTOSTART", target):
@@ -536,6 +560,10 @@ if mode == "limit":
 resolved = [l.split("]")[0].split("[")[1] for l in prompt.splitlines() if l.startswith("- [") and "old item" in l]
 items = [{"text": "Ask the vendor for the usage breakdown", "kind": "external", "detail": "invoice is higher than our records"},
          {"text": "Pick a brand", "kind": "bogus"}]
+if mode == "quotes":
+    items[0]["quote"] = "Still open: ask the vendor. Key: sk-ant-abcdefghijklmnopqrstuvwx"
+    items[1]["quote"] = "We agreed to pick the blue brand"
+    resolved = [{"id": r, "quote": "draft the vendor message", "ref": 1} for r in resolved]
 if mode == "junk":
     items = [5, "text", {"text": ""}, {"text": ["x"]}, {"kind": "task"}, {"text": "Call the bank", "detail": 7}]
     resolved = resolved + ["not-shown", 3, None, os.environ.get("FAKE_EXTRA_RESOLVED")]
@@ -678,9 +706,68 @@ class FollowupTests(Fixture):
         self.assertEqual((new["kind"], new["detail"]), ("task", "7"))
         self.assertFalse(next(i for i in todos.load(self.cfg) if i["text"] == "far item")["done_at"])
 
+    def test_digest_numbers_turns_for_quoting(self):
+        turns = []
+        d = followups.digest(self.proj / f"{SID}.jsonl", "demo", turns=turns)
+        self.assertIn("### #1 USER", d)
+        self.assertIn("### #2 CLAUDE", d)
+        self.assertEqual([(t["n"], t["role"]) for t in turns], [(1, "user"), (2, "assistant"), (3, "assistant")])
+
+    def test_quotes_are_checked_against_the_transcript(self):
+        turns = [{"n": 1, "role": "user", "uuid": "a", "at": "t1", "text": "Please don’t ship it yet.\nI'll ask the vendor first."},
+                 {"n": 2, "role": "assistant", "uuid": "b", "at": "t2", "text": "Sure, I'll wait for the vendor's answer."}]
+        self.assertEqual(followups.locate("I'll ask the vendor first", turns)["uuid"], "a")
+        self.assertEqual(followups.locate('"Please don\'t ship it yet. I\'ll ask"', turns)["uuid"], "a")  # quotes, spaces
+        self.assertEqual(followups.locate("Please don't ship ... the vendor first", turns)["uuid"], "a")
+        self.assertIsNone(followups.locate("I promised to call the vendor tomorrow", turns))  # made up
+        self.assertIsNone(followups.locate("vendor", turns))  # too short to mean anything
+        self.assertIsNone(followups.locate("ship it yet ... the vendor's answer", turns))  # pieces from two turns
+        ev = followups.evidence({"quote": "I'll wait for the vendor's answer", "ref": 2}, turns)
+        self.assertEqual((ev["uuid"], ev["role"], ev["at"]), ("b", "assistant", "t2"))
+        self.assertIsNone(followups.evidence({"quote": 5}, turns))
+
+    def test_secrets_redacted(self):
+        r = todos.redact
+        self.assertEqual(r("use ghp_abcdefghijklmnopqrstuvwxyz0123 now"), "use [secret] now")
+        self.assertEqual(r("DB_PASSWORD=hunter2 and api_key: abc123"), "DB_PASSWORD=[secret] and api_key: [secret]")
+        self.assertEqual(r("key sk-ant-api03-abcdefghijklmnopqrstu"), "key [secret]")
+        for fine in ("Revoke the token: it leaked", "Ask Northwind for the API key rotation date",
+                     "Change the database password tonight"):
+            self.assertEqual(r(fine), fine)
+
+    def test_followups_keep_their_evidence(self):
+        self.write([user(datetime.now().astimezone() - timedelta(hours=2), "draft the vendor message") | {"uuid": "u1"},
+                    entry(datetime.now().astimezone() - timedelta(hours=2), "assistant", uuid="u2", message={
+                        "id": "m2", "role": "assistant", "model": "claude-test-1",
+                        "content": [{"type": "text", "text": "Still open: ask the vendor. Key: sk-ant-abcdefghijklmnopqrstuvwx"}]})])
+        todos.merge_followups(self.cfg, {"id": "x", "project": "work/demo"}, [{"text": "old item", "kind": "task"}], [])
+        os.environ["FAKE_MODE"] = "quotes"
+        followups.scan(self.cfg)
+        items = {i["text"]: i for i in todos.load(self.cfg)}
+        ev = items["Ask the vendor for the usage breakdown"]["evidence"]
+        self.assertEqual((ev["uuid"], ev["role"]), ("u2", "assistant"))
+        self.assertEqual(ev["quote"], "Still open: ask the vendor. Key: [secret]")
+        self.assertNotIn("evidence", items["Pick a brand"])  # its quote isn't in the transcript
+        old = items["old item"]
+        self.assertTrue(old["done_at"])
+        self.assertEqual(old["closed_evidence"]["uuid"], "u1")
+
+    def test_reopened_item_not_closed_again_by_the_same_session(self):
+        todos.merge_followups(self.cfg, {"id": "x", "project": "work/demo"}, [{"text": "old item", "kind": "task"}], [])
+        followups.scan(self.cfg)
+        old = next(i for i in todos.load(self.cfg) if i["text"] == "old item")
+        self.assertEqual(old["closed_by"], SID)
+        todos.apply(self.cfg, {"op": "undo", "id": old["id"]})
+        old = next(i for i in todos.load(self.cfg) if i["text"] == "old item")
+        self.assertEqual((old["done_at"], old["not_closed_by"], "closed_by" in old), (None, [SID], False))
+        followups.scan(self.cfg, force=True)
+        self.assertIsNone(next(i for i in todos.load(self.cfg) if i["text"] == "old item")["done_at"])
+        todos.merge_followups(self.cfg, {"id": "later", "project": "work/demo"}, [], [old["id"]])
+        self.assertTrue(next(i for i in todos.load(self.cfg) if i["text"] == "old item")["done_at"])
+
     def test_checked_keeps_only_shown_ids(self):
         items, resolved = followups.checked({"items": "nonsense", "resolved": ["a", "b", "a", 1]}, {"a"})
-        self.assertEqual((items, resolved), ([], ["a"]))
+        self.assertEqual((items, resolved), ([], [{"id": "a"}]))
         self.assertEqual(followups.checked({}, set()), ([], []))
 
 
@@ -723,7 +810,7 @@ class EvalTests(unittest.TestCase):
     def test_perfect_answer_scores_perfectly(self):
         for name, spec in self.cases.items():
             added = [{"id": str(n), "text": r["label"]} for n, r in enumerate(spec["expect"]["open"])]
-            r = eval_followups.score(spec, added, added, [""])
+            r = eval_followups.score(spec, added, added)
             self.assertEqual((r["found"], r["hard_found"]), (r["expected"], r["hard_expected"]), name)
             self.assertEqual((r["wrong_open"], r["duplicates"], r["extra"], r["leaks"]), ([], 0, [], []), name)
 
@@ -731,12 +818,22 @@ class EvalTests(unittest.TestCase):
         spec = self.cases["09-secret-in-text"]
         added = [{"id": "1", "text": "Revoke token ghp_FAKEexample0000 and make a new one"},
                  {"id": "2", "text": "Rotate the GitHub token"},
-                 {"id": "3", "text": "Make the script read the token from a file", "quote": "something never said"}]
-        r = eval_followups.score(spec, added, added, ["Make the script read the token from a file"])
+                 {"id": "3", "text": "Make the script read the token from a file", "evidence": {"quote": "x"}}]
+        r = eval_followups.score(spec, added, added)
         self.assertEqual((r["found"], r["duplicates"]), (1, 1))
         self.assertEqual(r["wrong_open"], ["Make the script read the token from a file"])
         self.assertEqual(r["leaks"], ["ghp_FAKEexample"])
-        self.assertEqual(r["bad_quotes"], ["something never said"])
+        self.assertEqual(r["quoted"], 1)
+
+    def test_near_match_credits_the_item_not_found_yet(self):
+        spec = self.cases["12-same-project-rewording"]
+        added = [{"id": "1", "text": "Ask Daniel for the SMTP credentials"},
+                 {"id": "2", "text": "Test real reminder sending once the SMTP login arrives"}]
+        r = eval_followups.score(spec, added, added)
+        self.assertEqual((r["found"], r["duplicates"]), (2, 0))
+        spec = self.cases["08-closes-earlier"]
+        added = [{"id": "1", "text": "Deploy the upload fix tonight", "detail": "then clear the CDN cache"}]
+        self.assertEqual(eval_followups.score(spec, added, added)["found"], 1)  # `unless` looks at the text only
 
     def test_transcripts_read_like_real_ones(self):
         sess, path = eval_followups.build("11", self.cases["11-malformed"], self.root)[0]

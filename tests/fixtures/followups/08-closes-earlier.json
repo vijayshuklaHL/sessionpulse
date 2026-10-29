@@ -15,7 +15,7 @@
  ]}],
  "expect": {
   "open": [
-   {"label": "Deploy the upload fix to production", "match": [["deploy"]], "unless": ["cdn", "cache"]}
+   {"label": "Deploy the upload fix to production", "match": [["deploy the", "deploy upload", "deploy to"]]}
   ],
   "ok": [
    {"label": "Clear the CDN cache after the deploy", "match": [["cdn", "cache"]]}
