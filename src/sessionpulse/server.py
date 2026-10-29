@@ -11,6 +11,7 @@ Transcripts contain everything typed into Claude Code, so the server:
 """
 import hmac
 import json
+from datetime import date
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
@@ -87,6 +88,8 @@ def make_handler(cfg: config.Config, tok: str):
                 return self.send(200, json.dumps(data).encode(), "application/json")
             if url.path == "/api/excerpt":
                 return self.excerpt(parse_qs(url.query))
+            if url.path == "/api/export":
+                return self.export(parse_qs(url.query))
             if url.path in ("/", "/index.html"):
                 return self.send(200, page, "text/html; charset=utf-8")
             self.send(404, b"not found", "text/plain")
@@ -106,6 +109,19 @@ def make_handler(cfg: config.Config, tok: str):
                 return self.send(404, b'{"error": "that part of the transcript is gone"}', "application/json")
             return self.send(200, json.dumps({"session": sid, "project": sess.get("project"), "cwd": sess.get("cwd"),
                                               "turns": turns}).encode(), "application/json")
+
+        def export(self, q):
+            """The to-do list as a file to save (it's only formatted here, never sent anywhere)."""
+            fmt, status = q.get("format", ["md"])[0], q.get("status", ["open"])[0]
+            project = q["project"][0] if q.get("project") else None
+            try:
+                body = todos.export(todos.load(cfg), fmt, project, status)
+            except ValueError as exc:
+                return self.send(400, json.dumps({"error": str(exc)}).encode(), "application/json")
+            ctype = {"md": "text/markdown", "csv": "text/csv", "json": "application/json"}[fmt]
+            name = f"sessionpulse-todos-{date.today().isoformat()}.{fmt}"
+            return self.send(200, body.encode(), f"{ctype}; charset=utf-8",
+                             [("Content-Disposition", f'attachment; filename="{name}"')])
 
         def do_POST(self):
             # Writes need, on top of the cookie: a JSON content type (a plain cross-site

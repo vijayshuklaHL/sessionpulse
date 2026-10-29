@@ -213,6 +213,7 @@ a:hover { text-decoration: underline; }
 .tabs .badge { font-weight: 500; font-size: 11px; color: var(--text-muted); margin-left: 4px; }
 .board-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
 .board-bar input[type=search] { flex: 1; min-width: 180px; }
+#board-export { flex: 0 0 auto; }
 #board-proj { flex: 0 1 300px; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 .board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(270px, 1fr); gap: 12px;
   overflow-x: auto; padding-bottom: 8px; align-items: start; }
@@ -417,6 +418,11 @@ a:hover { text-decoration: underline; }
     </div>
     <select id="board-proj" aria-label="Project"><option value="">All projects</option></select>
     <input type="search" id="board-q" placeholder="Search to-dos…">
+    <select id="board-export" aria-label="Export" title="Download the list (the chosen project, or all). Nothing is sent anywhere.">
+      <option value="">Export…</option>
+      <option value="md|open">Open to-dos, Markdown</option><option value="csv|open">Open to-dos, CSV</option>
+      <option value="csv|all">Everything, CSV</option><option value="json|all">Everything, JSON</option>
+    </select>
     <span class="sub" id="board-note"></span>
   </div>
   <div class="board" id="board"></div>
@@ -909,6 +915,13 @@ document.querySelectorAll("#board-by button").forEach(b => b.addEventListener("c
   BY = b.dataset.b; try { localStorage.setItem("boardBy", BY); } catch {} renderBoard();
 }));
 $("#board-proj").addEventListener("change", renderBoard);
+$("#board-export").addEventListener("change", ev => {  // a plain download: the server sends it as an attachment
+  const [format, status] = ev.target.value.split("|"); ev.target.value = ""; ev.target.blur();
+  if (!format) return;
+  const q = new URLSearchParams({format, status}), proj = $("#board-proj").value;
+  if (proj) q.set("project", proj);
+  location.href = "/api/export?" + q;
+});
 $("#board-q").addEventListener("input", renderBoard);
 
 const B = $("#board");

@@ -57,6 +57,7 @@ It reads the files Claude Code already writes under `~/.claude`. **Nothing leave
 
 - **Live sessions:** working or idle, running time, last change, tokens, model. The panel icon shows the count and turns orange while Claude is working.
 - **Follow-ups (optional):** Claude reads each session after 20 quiet minutes and adds what was left open to your to-do list, linked back to the session, with a one-click resume command. A later session that finishes an item closes it automatically.
+- **Why is this here?** Each follow-up keeps a short quote from the session, checked against the transcript; **Why?** shows it in context. The same work showing up in another project is flagged, with **Merge** and **Not the same**.
 - **Board:** every to-do as a card, colour-coded by kind (Decide, Outside work, Waiting on, Checklist, Later), or by status (To do, Doing, Done). Drag and drop, project filter, search.
 - **Your own to-dos too:** add them on the dashboard or with `sessionpulse todo add "…"`.
 - **Usage:** input, output and cache tokens per day, split by model; active hours per day; busiest projects.
@@ -159,8 +160,10 @@ Log out and back in (on X11 you can press Alt+F2 and type `r` instead), then run
 | `sessionpulse open` | Opens the dashboard in your browser, signed in (add `#board` to the address for the board) |
 | `sessionpulse doctor` | Checks the setup and warns if Claude Code's file formats look different |
 | `sessionpulse todo [add TEXT -p PROJECT \| done ID \| undo ID \| delete ID \| list-done]` | Your to-do list from the terminal |
+| `sessionpulse todo export [--format md\|csv\|json] [-p PROJECT] [--status open\|all]` | Prints the list as Markdown (grouped by project), CSV or JSON; the board's Export menu downloads the same ([fields](https://github.com/vijayshuklaHL/sessionpulse/blob/main/docs/todos-json.md)) |
 | `sessionpulse followups [--days N] [--session ID] [--now] [--again]` | Read recent sessions now and add their open follow-ups |
-| `sessionpulse dedupe [-p PROJECT] [--apply]` | Finds open to-dos that are the same work reworded; `--apply` archives the copies |
+| `sessionpulse followups status` | What follow-ups used (calls, tokens, cost), results per kind, and sessions that failed |
+| `sessionpulse dedupe [-p PROJECT] [--across] [--apply]` | Finds open to-dos that are the same work reworded (`--across`: in different projects); `--apply` archives the copies |
 | `sessionpulse snapshot` | Prints the dashboard data as JSON |
 
 ## Settings

@@ -170,6 +170,12 @@ def cmd_snapshot(cfg, args):
 
 
 def cmd_todo(cfg, args):
+    if args.action == "export":
+        try:
+            sys.stdout.write(todos.export(todos.load(cfg), args.format, args.project, args.status))
+        except ValueError as exc:
+            sys.exit(f"error: {exc}")
+        return
     try:
         if args.action == "add":
             todos.apply(cfg, {"op": "add", "text": " ".join(args.text), "project": args.project})
@@ -315,11 +321,14 @@ def main(argv=None):
     sub.add_parser("open", help="open the dashboard in your browser")
     sub.add_parser("doctor", help="check the setup and data formats")
     sub.add_parser("snapshot", help="print the dashboard data as JSON")
-    t = sub.add_parser("todo", help="your to-do list: add, done, undo, delete, list, list-done")
+    t = sub.add_parser("todo", help="your to-do list: add, done, undo, delete, list, list-done, export")
     t.add_argument("action", nargs="?", default="list",
-                   choices=["list", "list-done", "add", "done", "undo", "delete"])
+                   choices=["list", "list-done", "add", "done", "undo", "delete", "export"])
     t.add_argument("text", nargs="*", help="the to-do text (add) or item ids (done/undo/delete)")
-    t.add_argument("-p", "--project", help="tag the new to-do with a project")
+    t.add_argument("-p", "--project", help="tag the new to-do with a project (export: only this project)")
+    t.add_argument("--format", choices=todos.FORMATS, default="md", help="export: md (default), csv or json")
+    t.add_argument("--status", choices=["open", "all"], default="open",
+                   help="export: open to-dos (default) or all, including done, on hold and archived")
     f = sub.add_parser("followups", help="pick open follow-ups out of recent sessions with Claude")
     f.add_argument("action", nargs="?", default="run", choices=["run", "status"],
                    help="run (default), or status: model use and sessions that failed")

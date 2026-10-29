@@ -13,6 +13,7 @@
 - Dismissing a follow-up asks why, in place: **Not useful**, **Wrong project**, **Already done** (marks it done instead) or **Just remove**. Recent "not useful" items in a project are shown to the model as examples of what not to add there.
 - Follow-ups no longer list a step that waits on another open item ("decide on the fonts once legal replies") as a separate to-do; it goes in that item's detail.
 - `sessionpulse followups status` shows, per kind, how many follow-ups were added, are open, done, parked, or dismissed as not useful.
+- `sessionpulse todo export [--format md|csv|json] [-p PROJECT] [--status open|all]` and an **Export** menu on the board (it downloads the file; nothing is sent anywhere). Markdown is grouped by project with each item's quote and resume command; CSV cells are guarded against spreadsheet formulas. The file formats are described in docs/todos-json.md.
 - `sessionpulse serve` explains a busy port in one line instead of a traceback.
 - `tools/eval_followups.py` and made-up test cases measure follow-up quality; see CONTRIBUTING.md.
 

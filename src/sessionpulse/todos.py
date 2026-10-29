@@ -4,6 +4,8 @@ Items come from you (dashboard or `sessionpulse todo`) or from your sessions
 (followups.py, marked source="session"). Ticking an item stamps `done_at`;
 that is what the dashboard's Completed section shows.
 """
+import csv
+import io
 import json
 import os
 import re
@@ -391,3 +393,71 @@ def kind_stats(cfg):
         r["added"] += 1
         r["not_useful" if d.get("reason") == "not_useful" else "dismissed"] += 1
     return out
+
+
+# ---------- export ----------
+FORMATS = ("md", "csv", "json")
+_PARKED_LABEL = {"hold": "on hold", "archived": "archived"}
+
+
+def state(item):
+    """open, doing, hold, archived or done."""
+    if item.get("done_at"):
+        return "done"
+    return item.get("status") if item.get("status") in STATUSES else "doing" if item.get("doing") else "open"
+
+
+def resume(item):
+    return f"cd {item.get('cwd') or '~'} && claude --resume {item['session']}" if item.get("session") else ""
+
+
+def _cell(v):
+    """A CSV cell a spreadsheet won't run as a formula."""
+    v = "" if v is None else str(v)
+    return "'" + v if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
+
+
+def export(items, fmt="md", project=None, status="open"):
+    """The to-do list as Markdown (grouped by project), CSV or JSON text. status: open (not done or
+    parked) or all. Nothing is sent anywhere; this only formats what is in todos.json."""
+    if fmt not in FORMATS:
+        raise ValueError(f"format must be one of {', '.join(FORMATS)}")
+    if status not in ("open", "all"):
+        raise ValueError("status must be open or all")
+    rows = [i for i in items if (project is None or (i.get("project") or "") == project)
+            and (status == "all" or is_open(i))]
+    rows.sort(key=lambda i: ((i.get("project") or "").lower(), state(i) == "done", i.get("created") or ""))
+    if fmt == "json":
+        return json.dumps(rows, indent=1, ensure_ascii=False) + "\n"
+    if fmt == "csv":
+        out = io.StringIO()
+        w = csv.writer(out)
+        w.writerow(("id", "text", "project", "kind", "state", "created", "done_at", "detail", "quote",
+                    "duplicate_of", "resume"))
+        for i in rows:
+            w.writerow([_cell(v) for v in (i["id"], i["text"], i.get("project"), i.get("kind"), state(i),
+                                           i.get("created"), i.get("done_at"), i.get("detail"),
+                                           (i.get("evidence") or {}).get("quote"), i.get("duplicate_of"),
+                                           resume(i))])
+        return out.getvalue()
+    lines = [f"# To-dos ({'open' if status == 'open' else 'all'}, exported {_now()[:10]})", ""]
+    current = object()
+    for i in rows:
+        if (i.get("project") or "") != current:
+            current = i.get("project") or ""
+            lines += ["", f"## {current or 'No project'}", ""]
+        st = state(i)
+        tags = [t for t in (i.get("kind"), _PARKED_LABEL.get(st), "doing" if st == "doing" else None) if t]
+        done = f" (done {i['done_at'][:10]})" if i.get("done_at") else ""
+        lines.append(f"- [{'x' if st == 'done' else ' '}] {i['text']}" + (f" *({', '.join(tags)})*" if tags else "")
+                     + done)
+        if i.get("detail"):
+            lines.append(f"  {i['detail']}")
+        quote = (i.get("evidence") or {}).get("quote")
+        if quote:
+            lines.append(f"  > {quote}")
+        if i.get("session"):
+            lines.append(f"  `{resume(i)}`")
+    if not rows:
+        lines.append("Nothing to export.")
+    return "\n".join(lines).replace("\n\n\n", "\n\n") + "\n"

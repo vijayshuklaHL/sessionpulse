@@ -1,4 +1,5 @@
 """Run with: python3 -m unittest discover -s tests"""
+import csv
 import io
 import json
 import os
@@ -273,6 +274,20 @@ class ServerTests(Fixture):
         except urllib.error.HTTPError as e:
             return e.code, e.read()
 
+    def test_export_downloads_the_list(self):
+        for text, project in (('=HYPERLINK("x")', "a"), ("ship it", "b")):
+            todos.apply(self.cfg, {"op": "add", "text": text, "project": project})
+        cookie = {"Cookie": self.get(f"/?token={config.token(self.cfg)}")[1]["Set-Cookie"].split(";")[0]}
+        code, head, body = self.get("/api/export?format=csv&project=a", cookie)
+        self.assertEqual(code, 200)
+        self.assertIn("attachment", head["Content-Disposition"])
+        self.assertTrue(head["Content-Type"].startswith("text/csv"))
+        body = body.decode() if isinstance(body, bytes) else body
+        self.assertIn("'=HYPERLINK", body)  # a spreadsheet won't run it
+        self.assertNotIn("ship it", body)
+        self.assertEqual(self.get("/api/export?format=exe", cookie)[0], 400)
+        self.assertEqual(self.get("/api/export")[0], 403)
+
     def test_excerpt_shows_turns_around_one(self):
         rows = [user(self.t0, f"prompt {n}") | {"uuid": f"u{n}"} for n in range(6)]
         rows[3]["message"]["content"] = "my DB_PASSWORD=hunter2 is set"
@@ -402,6 +417,45 @@ class TodoTests(Fixture):
             cli.main(["todo", "done", i])
             cli.main(["todo", "list-done"])
         self.assertIn("call Sam  [ops]  done", out.getvalue())
+
+
+class ExportTests(Fixture):
+    def setUp(self):
+        super().setUp()
+        todos.merge_followups(self.cfg, {"id": SID, "project": "work/ops", "cwd": "/home/demo/ops"},
+                              [{"text": "Renew the NAS warranty", "kind": "external",
+                                "evidence": {"quote": "the NAS warranty runs out in May"}}], [])
+        for text, project in (("Water the plants", None), ("Old idea", "work/ops"), ("Shipped thing", "work/ops")):
+            todos.apply(self.cfg, {"op": "add", "text": text, "project": project})
+        ids = {i["text"]: i["id"] for i in todos.load(self.cfg)}
+        todos.apply(self.cfg, {"op": "set", "id": ids["Old idea"], "status": "hold"})
+        todos.apply(self.cfg, {"op": "done", "id": ids["Shipped thing"]})
+
+    def test_markdown_groups_by_project_with_resume_commands(self):
+        md = todos.export(todos.load(self.cfg), "md")
+        self.assertLess(md.index("## No project"), md.index("## work/ops"))
+        self.assertIn("- [ ] Renew the NAS warranty *(external)*\n  > the NAS warranty runs out in May\n"
+                      f"  `cd /home/demo/ops && claude --resume {SID}`", md)
+        self.assertNotIn("Old idea", md)
+        full = todos.export(todos.load(self.cfg), "md", status="all")
+        self.assertIn("- [ ] Old idea *(on hold)*", full)
+        self.assertIn("- [x] Shipped thing (done ", full)
+
+    def test_json_csv_and_filters(self):
+        items = todos.load(self.cfg)
+        self.assertEqual([i["text"] for i in json.loads(todos.export(items, "json", project=""))], ["Water the plants"])
+        rows = list(csv.reader(io.StringIO(todos.export(items, "csv", "work/ops", "all"))))
+        self.assertEqual(rows[0][:5], ["id", "text", "project", "kind", "state"])
+        self.assertEqual(sorted(r[4] for r in rows[1:]), ["done", "hold", "open"])
+        with self.assertRaises(ValueError):
+            todos.export(items, "pdf")
+
+    def test_cli_export(self):
+        with unittest.mock.patch.object(config, "load", return_value=self.cfg), \
+             unittest.mock.patch("sys.stdout", io.StringIO()) as out:
+            cli.main(["todo", "export", "--format", "csv", "-p", "work/ops"])
+        self.assertIn("Renew the NAS warranty", out.getvalue())
+        self.assertNotIn("Water the plants", out.getvalue())
 
 
 class StatusTests(Fixture):
