@@ -1,0 +1,36 @@
+{
+ "about": "A long-running list and one session that finishes some items in indirect words, half-does one and leaves the rest. Tests closing: closed only what is clearly done.",
+ "seed": [
+  {"id": "c1", "text": "Wait for Acme's invoice for the October print run", "project": "home/bakery-shop", "kind": "waiting"},
+  {"id": "c2", "text": "Call the landlord about the broken oven vent", "project": "home/bakery-shop", "kind": "external"},
+  {"id": "c3", "text": "Update the opening hours on the website for winter", "project": "home/bakery-shop", "kind": "task"},
+  {"id": "c4", "text": "Write the November newsletter", "project": "home/bakery-shop", "kind": "task"},
+  {"id": "c5", "text": "Decide on the price of the new rye loaf", "project": "home/bakery-shop", "kind": "decision"},
+  {"id": "c6", "text": "Order paper bags with the new logo", "project": "home/bakery-shop", "kind": "external"}
+ ],
+ "sessions": [{"project": "home/bakery-shop", "turns": [
+  ["user", "Acme's bill for the October flyers finally came in, 340 euros. Can you add it to the expenses sheet?"],
+  ["claude", "Added a row to `expenses-2026.csv`: Acme Print, October flyers, 340.00 EUR, under marketing."],
+  ["user", "Also the winter hours: Monday closed, Tuesday to Saturday 7 to 15, Sunday 8 to 12. Put them on the site."],
+  ["claude", "Updated `hours.html` and the footer with the winter hours, and checked both pages in the preview. They are live after the next deploy, which runs automatically on push. I pushed it."],
+  ["user", "Thanks. Let's start the November newsletter too: just the intro about the rye loaf for now."],
+  ["claude", "I drafted the intro paragraph in `newsletter-2026-11.md`. The rest (the Christmas order dates and the recipe of the month) still needs writing, and the rye loaf price is still blank because you haven't decided it."],
+  ["user", "Right, I'll think about the rye price over the weekend. I talked to the landlord this morning, by the way, he's sending someone for the vent on Thursday."],
+  ["claude", "Good. So the vent repair is booked for Thursday."]
+ ]}],
+ "expect": {
+  "open": [],
+  "ok": [
+   {"label": "Make sure the vent repair happens on Thursday", "match": [["vent", "landlord"]]},
+   {"label": "Christmas order dates / recipe of the month for the newsletter", "match": [["christmas", "recipe of the month", "newsletter"]]}
+  ],
+  "not_open": [
+   {"label": "Acme invoice (arrived)", "match": [["acme", "invoice", "bill"]]},
+   {"label": "Winter hours (done)", "match": [["hours"]]},
+   {"label": "Rye price (already on the list)", "match": [["rye"], ["price", "decide"]]},
+   {"label": "Paper bags (already on the list)", "match": [["bag"]]}
+  ],
+  "closed": ["c1", "c2", "c3"],
+  "kept_open": ["c4", "c5", "c6"]
+ }
+}

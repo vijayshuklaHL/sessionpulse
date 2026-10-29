@@ -31,6 +31,7 @@ USER_CHARS = 1200      # per prompt
 CLAUDE_CHARS = 2500    # per reply
 MAX_ITEMS = 12
 MAX_OPEN = 150         # open to-dos shown to the model per project
+MAX_RELATED = 60       # and from the projects linked to it
 QUOTE_CHARS = 160
 EXCERPT_CHARS = 4000   # per turn, in the dashboard's transcript excerpt
 TIMEOUT = 180
@@ -59,7 +60,8 @@ Write each item as a short imperative the user would put on their own list (max 
 English, naming the concrete thing ("Ask the vendor for the September invoice broken down by team"). \
 Put the reason or context in `detail` (max 200 characters). Never copy passwords, keys or tokens into items.
 
-You also get the user's currently open to-dos for this project, with ids. Put an id in `resolved` only \
+You also get the user's currently open to-dos for this project, with ids, and sometimes those of related \
+projects where the same work is also tracked; treat both lists the same way. Put an id in `resolved` only \
 if this transcript clearly shows that item was completed. Do not repeat an open to-do as a new item, even \
 in different words: if an open to-do already covers the work, leave it out. Do not re-add anything listed \
 under "dismissed".
@@ -343,18 +345,25 @@ def process(cfg, sess, path, usage=None):
     """Extract follow-ups from one session and merge them into the to-do list."""
     items = todos.load(cfg)
     project = sess.get("project") or ""
-    # newest first: the model must see recent items, or it adds them again reworded
-    open_ = sorted((i for i in items if not i.get("done_at") and i.get("status") != "archived"
-                    and i.get("project") == project),
-                   key=lambda i: i.get("created") or "", reverse=True)[:MAX_OPEN]
+    linked = todos.related(cfg, project)
+
+    def newest(where, n):  # newest first: the model must see recent items, or it adds them again reworded
+        return sorted((i for i in items if not i.get("done_at") and i.get("status") != "archived" and where(i)),
+                      key=lambda i: i.get("created") or "", reverse=True)[:n]
+
+    open_ = newest(lambda i: i.get("project") == project, MAX_OPEN)
+    others = newest(lambda i: i.get("project") in linked, MAX_RELATED) if linked else []
     dismissed = [d for d in todos.dismissed(cfg) if d.get("project") == project][-40:]
     turns = []
     prompt = digest(path, project, turns=turns)
     prompt += "\n\n## Open to-dos for this project\n" + (
         "\n".join(f"- [{i['id']}] {i['text']}" for i in open_) or "(none)")
+    if others:
+        prompt += "\n\n## Open to-dos in related projects\n" + "\n".join(
+            f"- [{i['id']}] {i['text']} ({i['project']})" for i in others)
     prompt += "\n\n## Dismissed (never re-add)\n" + (
         "\n".join(f"- {d['text']}" for d in dismissed) or "(none)")
-    found, resolved = checked(ask_claude(cfg, prompt, usage=usage), {i["id"] for i in open_})
+    found, resolved = checked(ask_claude(cfg, prompt, usage=usage), {i["id"] for i in open_ + others})
     for r in found + resolved:
         r["evidence"] = evidence(r, turns)
     return todos.merge_followups(cfg, sess, found, resolved)
@@ -390,6 +399,59 @@ def find_duplicates(cfg, project):
         g = [x for x in dict.fromkeys(map(str, g)) if x in ids]
         if len(g) > 1:
             groups.append(g)
+    return groups
+
+
+ACROSS_SYSTEM = """You get numbered pairs of open to-dos from two different projects. For each pair, decide \
+whether both items are the same piece of work, tracked twice. Reply only with the JSON the schema asks for: \
+the numbers of the pairs that are the same.
+
+Same means doing one would finish the other. Items about different devices, sites, people, dates or steps \
+are NOT the same, even if worded alike. A broader item ("Harden the office server") is not the same as one \
+narrower step of it ("Change the server's admin password"). When unsure, leave the pair out."""
+
+ACROSS_SCHEMA = {
+    "type": "object",
+    "properties": {"same": {"type": "array", "items": {"type": "integer"}}},
+    "required": ["same"],
+}
+ACROSS_AT, ACROSS_SHARED = 0.25, 2  # loose: the model decides, this only keeps the pairs few
+ACROSS_BATCH = 40
+
+
+def pairs_across(cfg):
+    """Open to-dos in different projects that might be the same work: [(a, b)], likeliest first.
+    Pairs you marked "not the same" are left out."""
+    open_ = [i for i in todos.load(cfg) if todos.is_open(i)]
+    apart = {tuple(p) for p in todos.links(cfg)["not_same"]}
+    words = [todos._words(i["text"]) for i in open_]
+    out = []
+    for x, a in enumerate(open_):
+        for y in range(x + 1, len(open_)):
+            b = open_[y]
+            if (a.get("project") or "") == (b.get("project") or "") or tuple(sorted((a["id"], b["id"]))) in apart:
+                continue
+            both = len(words[x] & words[y])
+            if both >= ACROSS_SHARED and both / len(words[x] | words[y]) >= ACROSS_AT:
+                out.append((both / len(words[x] | words[y]), a, b))
+    return [(a, b) for _, a, b in sorted(out, key=lambda p: -p[0])]
+
+
+def find_duplicates_across(cfg, pairs):
+    """Ask the model which of these pairs are the same work; returns groups of ids (pairs that
+    share an item are joined into one group)."""
+    same = []
+    for start in range(0, len(pairs), ACROSS_BATCH):
+        batch = pairs[start:start + ACROSS_BATCH]
+        out = ask_claude(cfg, "\n".join(f"{n}. [{a['project']}] {a['text']}\n   [{b['project']}] {b['text']}"
+                                         for n, (a, b) in enumerate(batch, 1)),
+                         system=ACROSS_SYSTEM, schema=ACROSS_SCHEMA)
+        same += [batch[n - 1] for n in out.get("same") or () if isinstance(n, int) and 1 <= n <= len(batch)]
+    groups = []
+    for a, b in same:
+        joined = [g for g in groups if a["id"] in g or b["id"] in g]
+        merged = list(dict.fromkeys([x for g in joined for x in g] + [a["id"], b["id"]]))
+        groups = [g for g in groups if g not in joined] + [merged]
     return groups
 
 

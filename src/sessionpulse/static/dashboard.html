@@ -267,6 +267,13 @@ a:hover { text-decoration: underline; }
 .why-quote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 6px 6px 0; }
 .why-quote blockquote { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
 .why-quote figcaption { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.dup { margin-top: 6px; padding: 5px 7px; border-radius: 6px; font-size: 12px; color: var(--text-secondary);
+  background: color-mix(in srgb, var(--accent) 9%, transparent); border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.dup q { color: var(--text-primary); }
+.dup .dup-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.dup button { font: inherit; font-size: 11px; border: 1px solid var(--border); background: var(--surface-1);
+  color: var(--text-secondary); border-radius: 5px; padding: 1px 7px; cursor: pointer; }
+.todo .dup { display: block; }
 .linkish { font: inherit; border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; }
 .turn { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: 12.5px; }
 .turn.hit { border-color: var(--accent); }
@@ -680,6 +687,11 @@ const dayLabel = iso => { const d = dkey(new Date(iso)), t = new Date(); const t
 const KIND = {external: "Outside work", checklist: "Checklist", decision: "Decide", waiting: "Waiting on", task: "Later"};
 const PARKED = ["hold", "archived"];
 const isOpen = i => !i.done_at && !PARKED.includes(i.status);
+// "Maybe the same as …": a follow-up that looks like an open item in another project
+const twinOf = i => { const t = !i.done_at && i.possible_duplicate_of && (DATA.todos || []).find(x => x.id === i.possible_duplicate_of);
+  return t && isOpen(t) ? t : null; };
+const dupNote = i => { const t = twinOf(i); return t ? `<div class="dup">Maybe the same as <q>${esc(t.text)}</q> in ${esc(t.project || "no project")}
+  <span class="dup-acts"><button data-dup="merge" data-id="${esc(i.id)}" title="Archive this one as a copy; follow-ups in either project can then close the other">Merge</button><button data-dup="not_same" data-id="${esc(i.id)}" title="Keep both; this pair won't be flagged again">Not the same</button></span></div>` : ""; };
 const todoRow = (i, done, grouped) => {
   const born = i.session_at || i.created;
   const from = i.source === "session" && i.session
@@ -688,7 +700,7 @@ const todoRow = (i, done, grouped) => {
   return `<li class="todo${done ? " is-done" : ""}">
   <input type="checkbox" data-id="${esc(i.id)}" ${done ? "checked" : ""} aria-label="${done ? "Mark not done" : "Mark done"}">
   <span class="txt">${i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind] || i.kind)}</span>` : ""}${esc(i.text)}${i.project && !grouped ? `<span class="tag">${esc(i.project)}</span>` : ""}
-    ${i.detail && !done ? `<span class="detail">${esc(i.detail)}</span>` : ""}${done ? "" : from}${auto}</span>
+    ${i.detail && !done ? `<span class="detail">${esc(i.detail)}</span>` : ""}${done ? "" : from}${auto}${dupNote(i)}</span>
   <span class="when" title="${done ? "Done " : i.session_at ? "Discussed " : "Added "}${esc(fmtD(done ? i.done_at : born))}">${done ? fmtT(i.done_at) : ago(Date.parse(born))}</span>
   <button class="x" data-del="${esc(i.id)}" title="${i.source === "session" ? "Dismiss (won't be picked up again)" : "Delete"}" aria-label="Delete">×</button></li>`;
 };
@@ -824,7 +836,7 @@ const card = i => {
   const born = i.session_at || i.created, cols = COLS[BY], here = colOf(i), parked = PARKED.includes(here);
   return `<div class="card2 k-${esc(i.kind || "mine")}${i.doing && here !== "done" && !parked ? " doing" : ""}${i.done_at ? " done" : ""}${parked ? " parked" : ""}" draggable="true" data-id="${esc(i.id)}">
     <div class="t">${(BY === "status" || parked) && i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind])}</span>` : ""}${esc(i.text)}</div>
-    ${i.detail ? `<div class="d" title="Click to expand">${esc(i.detail)}</div>` : ""}
+    ${i.detail ? `<div class="d" title="Click to expand">${esc(i.detail)}</div>` : ""}${PARKED.includes(colOf(i)) ? "" : dupNote(i)}
     <div class="meta">${i.doing && !i.done_at && !parked && BY === "kind" ? `<span class="doing-pill">Doing</span>` : ""}${i.project ? `<span class="tag" title="${esc(i.project)}">${esc(i.project.split("/").pop())}</span>` : ""}
       <span title="${i.done_at ? "Done " + esc(fmtD(i.done_at)) : (i.session_at ? "Discussed " : "Added ") + esc(fmtD(born))}">${i.done_at ? "done " + ago(Date.parse(i.done_at)) : ago(Date.parse(born))}</span>
       ${i.closed_by && i.done_at ? `<span title="A later session showed this was done">· auto</span>` : ""}
@@ -943,6 +955,8 @@ async function showExcerpt(btn) {
 document.addEventListener("click", ev => {  // before the lists' own handlers
   const w = ev.target.closest("[data-why]");
   if (w) { ev.stopPropagation(); ev.preventDefault(); openWhy(w.dataset.why); }
+  const d = ev.target.closest("[data-dup]");
+  if (d) { ev.stopPropagation(); ev.preventDefault(); todoOp({op: d.dataset.dup, id: d.dataset.id}); }
 }, true);
 WHY.addEventListener("click", async ev => {
   if (ev.target === WHY || ev.target.closest("#why-close")) return closeWhy();

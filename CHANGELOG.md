@@ -7,6 +7,9 @@
 - Follow-ups check the model's answer more strictly: malformed items are dropped, and it can only close to-dos it was actually shown.
 - Follow-ups show **why** they are there: each new item keeps a short quote from the session, checked word for word against the transcript (a quote that isn't there is dropped, never shown), with the turn it came from. The board's **Why?** button shows the quote, the session and **Show in transcript** (the turns around it, from the new token-protected `/api/excerpt`). Items a session closed show the quote that closed them and a **Reopen** button; a reopened item is never closed again by that same session. Older items show their session and date only.
 - Follow-ups remove things that look like secrets (GitHub and API tokens, AWS keys, JWTs, private keys, `password=…`) from item text, details and quotes before storing them.
+- Follow-ups notice the same work listed in another project: the new item is still added, with a **Maybe the same as …** note on the board and the to-do list. **Merge** archives it as a copy of the other one; **Not the same** keeps both and never flags that pair again.
+- Projects you merged a copy between count as related: follow-ups in either one see the other's open items, so they don't add them again and can close them when a session finishes the work.
+- `sessionpulse dedupe --across [--apply]`: finds open to-dos that look alike in different projects, asks Claude about those pairs only, and with `--apply` archives the copies and links their projects.
 - `sessionpulse serve` explains a busy port in one line instead of a traceback.
 - `tools/eval_followups.py` and made-up test cases measure follow-up quality; see CONTRIBUTING.md.
 

@@ -102,10 +102,56 @@ def _words(text):
     return out
 
 
-def similar(a, b):
-    """True if two to-do texts say the same thing in different words."""
+def similar(a, b, at=SIMILAR, shared=1):
+    """True if two to-do texts say the same thing in different words: their content words
+    overlap by at least `at`, and they share at least `shared` of them."""
     wa, wb = _words(a), _words(b)
-    return bool(wa and wb) and len(wa & wb) / len(wa | wb) >= SIMILAR
+    both = len(wa & wb)
+    return bool(wa and wb) and both >= shared and both / len(wa | wb) >= at
+
+
+# Across projects the same work tends to be worded more differently, and a false match costs a
+# click ("Not the same") rather than a lost item, so a looser test only flags the pair.
+CROSS = 0.4
+CROSS_SHARED = 3
+
+
+def _links_path(cfg):
+    return cfg.data / "todos-links.json"
+
+
+def links(cfg):
+    """{"not_same": [[id, id], ...], "related": [[project, project], ...]}, each pair sorted."""
+    try:
+        d = json.loads(_links_path(cfg).read_text())
+    except (OSError, ValueError):
+        d = {}
+    d = d if isinstance(d, dict) else {}
+    return {k: [sorted(map(str, p)) for p in d.get(k, ()) if isinstance(p, list) and len(p) == 2]
+            for k in ("not_same", "related")}
+
+
+def _link(cfg, kind, a, b):
+    d = links(cfg)
+    pair = sorted((str(a), str(b)))
+    if a != b and pair not in d[kind]:
+        d[kind] = (d[kind] + [pair])[-2000:]
+        _write(_links_path(cfg), d)
+
+
+def related(cfg, project):
+    """Projects linked to this one by a merge you confirmed: the same work can be tracked in either."""
+    return {p for pair in links(cfg)["related"] if project in pair for p in pair if p != project}
+
+
+def maybe_same(item, items, not_same=()):
+    """The open item in another project that this one looks like a copy of, or None."""
+    apart = {tuple(p) for p in not_same}
+    hits = [i for i in items if is_open(i) and i["id"] != item["id"]
+            and (i.get("project") or "") != (item.get("project") or "")
+            and tuple(sorted((i["id"], item["id"]))) not in apart
+            and similar(item["text"], i["text"], CROSS, CROSS_SHARED)]
+    return max(hits, key=lambda i: i.get("created") or "", default=None)
 
 
 def _recent(stamp, days=RECENT_DAYS):
@@ -122,6 +168,8 @@ def merge_followups(cfg, sess, found, resolved):
     including the same to-do reworded (see similar()) within the project."""
     added = closed = 0
     project = sess.get("project")
+    here = {project} | related(cfg, project)  # closing reaches projects you linked to this one
+    not_same = links(cfg)["not_same"]
     why = {r["id"]: r.get("evidence") for r in resolved if isinstance(r, dict) and r.get("id")}
     resolved = set(why) | {r for r in resolved if isinstance(r, str)}
     with lock:
@@ -146,10 +194,13 @@ def merge_followups(cfg, sess, found, resolved):
                     "session_at": sess.get("end")}
             if isinstance(f.get("evidence"), dict):
                 item["evidence"] = f["evidence"]
+            twin = maybe_same(item, items, not_same)
+            if twin:
+                item["possible_duplicate_of"] = twin["id"]
             items.append(item)
             added += 1
         for i in items:
-            if i["id"] in resolved and not i.get("done_at") and i.get("project") == project \
+            if i["id"] in resolved and not i.get("done_at") and i.get("project") in here \
                     and sess.get("id") not in i.get("not_closed_by", ()):
                 i["done_at"] = _now()
                 i["closed_by"] = sess.get("id")
@@ -161,12 +212,14 @@ def merge_followups(cfg, sess, found, resolved):
     return added, closed
 
 
-def merge_duplicates(cfg, groups):
+def merge_duplicates(cfg, groups, link=False):
     """Archive all but one open item of each group of duplicate ids; returns how many.
 
     The kept item is the one in progress, else the newest. Archived copies record
-    `duplicate_of`, so they stay on the board and can be moved back."""
+    `duplicate_of`, so they stay on the board and can be moved back. With `link`, the
+    projects of a merged group become related (see related())."""
     merged = 0
+    pairs = set()
     with lock:
         items = load(cfg)
         by_id = {i["id"]: i for i in items}
@@ -177,13 +230,23 @@ def merge_duplicates(cfg, groups):
             keep = max(live, key=lambda i: (bool(i.get("doing")), i.get("created") or ""))
             for i in live:
                 if i is not keep:
-                    i["status"] = "archived"
-                    i["doing"] = False
-                    i["duplicate_of"] = keep["id"]
+                    _archive_copy(i, keep)
                     merged += 1
+                    if i.get("project") and keep.get("project") and i["project"] != keep["project"]:
+                        pairs.add((i["project"], keep["project"]))
         if merged:
             _save(cfg, items)
+        if link:
+            for a, b in pairs:
+                _link(cfg, "related", a, b)
     return merged
+
+
+def _archive_copy(item, keep):
+    item["status"] = "archived"
+    item["doing"] = False
+    item["duplicate_of"] = keep["id"]
+    item.pop("possible_duplicate_of", None)
 
 
 def _clean(text, limit=MAX_TEXT):
@@ -203,7 +266,8 @@ def apply(cfg, op):
 
     op is a dict: {"op": "add", "text", "project"?} | {"op": "done"|"undo"|"delete", "id"}
     | {"op": "delete", "ids": [...]} | {"op": "set", "id", "kind"?, "doing"?, "done"?, "status"?}
-    | {"op": "edit", "id", "text"}. Raises ValueError on anything else."""
+    | {"op": "edit", "id", "text"} | {"op": "merge"|"not_same", "id"} (an item flagged as
+    `possible_duplicate_of` another). Raises ValueError on anything else."""
     if not isinstance(op, dict):
         raise ValueError("expected an object")
     kind = op.get("op")
@@ -224,11 +288,22 @@ def apply(cfg, op):
             d += [{"text": i["text"], "project": i.get("project"), "at": _now()}
                   for i in gone if i.get("source") == "session"]
             _write(_dismissed_path(cfg), d[-2000:])
-        elif kind in ("done", "undo", "delete", "edit", "set"):
+        elif kind in ("done", "undo", "delete", "edit", "set", "merge", "not_same"):
             hit = next((i for i in items if i["id"] == op.get("id")), None)
             if hit is None:
                 raise ValueError("no such item")
-            if kind == "set":  # the board: move a card between columns
+            if kind in ("merge", "not_same"):
+                twin = next((i for i in items if i["id"] == hit.get("possible_duplicate_of")), None)
+                hit.pop("possible_duplicate_of", None)
+                if twin is None:
+                    pass  # the other one is gone: nothing left to compare with
+                elif kind == "not_same":
+                    _link(cfg, "not_same", hit["id"], twin["id"])
+                else:  # keep the older one, which may already be in progress
+                    _archive_copy(hit, twin)
+                    if hit.get("project") and twin.get("project") and hit["project"] != twin["project"]:
+                        _link(cfg, "related", hit["project"], twin["project"])
+            elif kind == "set":  # the board: move a card between columns
                 if "kind" in op:
                     if op["kind"] not in (*KINDS, None, ""):
                         raise ValueError("unknown kind")

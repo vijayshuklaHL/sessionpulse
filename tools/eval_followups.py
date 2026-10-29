@@ -12,6 +12,7 @@ the real followups.process() on them with `claude -p`, and scores the result:
   wrong_open    items added that were finished, rejected or already listed
                 (items in a case's `ok` list are fine either way and not counted)
   duplicates    extra open items for work already found (in any project)
+  flagged       of those, copies shown as "maybe the same as" the other (one click to merge)
   closures      seeded to-dos correctly closed, and wrongly closed
   leaks         secrets copied into an item
   quoted        items whose quote was found in the transcript (only those keep one)
@@ -123,7 +124,7 @@ def matches(text, rule, detail=""):
 def score(spec, added, final):
     """Score one run on the list as it ends. `added` are the new items, `final` the whole list."""
     exp = spec["expect"]
-    hits = {n: 0 for n in range(len(exp["open"]))}
+    hits = {n: [] for n in range(len(exp["open"]))}
     wrong, extra, fine, later = [], [], [], []
     for item in added:
         if item.get("done_at"):  # added, then closed by a later session: judge the list as it ends
@@ -131,7 +132,7 @@ def score(spec, added, final):
             continue
         found = [n for n, rule in enumerate(exp["open"]) if matches(item["text"], rule, item.get("detail"))]
         if found:  # credit an expected item not found yet, so a near match isn't counted as a duplicate
-            hits[next((n for n in found if not hits[n]), found[0])] += 1
+            hits[next((n for n in found if not hits[n]), found[0])].append(item)
         elif any(matches(item["text"], rule, item.get("detail")) for rule in exp.get("ok", ())):
             fine.append(item["text"])
         elif any(matches(item["text"], rule) for rule in exp.get("not_open", ())):
@@ -146,7 +147,9 @@ def score(spec, added, final):
         "hard_expected": len(hard), "hard_found": sum(1 for n in hard if hits[n]),
         "missed": [exp["open"][n]["label"] for n in range(len(exp["open"])) if not hits[n]],
         "wrong_open": wrong,
-        "duplicates": sum(max(0, h - 1) for h in hits.values()),
+        "duplicates": sum(max(0, len(h) - 1) for h in hits.values()),
+        "flagged": sum(1 for h in hits.values() for i in h
+                       if i.get("possible_duplicate_of") in {x.get("id") for x in h}),
         "extra": extra,
         "ok": fine,
         "closed_later": later,
@@ -201,6 +204,8 @@ def run_case(name, spec, model, claude_command=""):
                 for i in spec.get("seed", ())]
         if seed:
             todos._save(cfg, seed)
+        for a, b in spec.get("related", ()):  # projects linked by an earlier merge
+            todos._link(cfg, "related", a, b)
         for sess, path in build(name, spec, cfg.claude):
             try:
                 followups.process(cfg, sess, path)
@@ -212,7 +217,8 @@ def run_case(name, spec, model, claude_command=""):
     result = score(spec, added, final)
     result.update(errors=errors, seconds=round(time.monotonic() - began, 1), usage=_local.usage,
                   unverified=_local.unverified,
-                  items=[{k: i.get(k) for k in ("text", "kind", "detail", "project", "evidence", "done_at") if i.get(k)}
+                  items=[{k: i.get(k) for k in ("id", "text", "kind", "detail", "project", "evidence", "done_at",
+                                                "possible_duplicate_of") if i.get(k)}
                          for i in added])
     return result
 
@@ -240,6 +246,7 @@ def summarise(runs):
         "wrong_open": count("wrong_open"),
         "wrong_open_rate": round(count("wrong_open") / max(1, sum(len(r["items"]) for r in flat)), 3),
         "duplicates_per_session": round(tot("duplicates") / max(1, sessions), 3),
+        "duplicates_flagged": f"{sum(r.get('flagged', 0) for r in flat)}/{tot('duplicates')}",
         "extra": count("extra"),
         "closed": f"{tot('closed_ok')}/{tot('closed_expected')}",
         "closed_wrongly": count("closed_wrongly"),
@@ -256,13 +263,15 @@ def summarise(runs):
 
 
 def show_case(name, r):
-    mark = "ok " if r["found"] == r["expected"] and not r["wrong_open"] and not r["duplicates"] else "!! "
+    mark = "ok " if r["found"] == r["expected"] and not r["wrong_open"] and r["duplicates"] <= r.get("flagged", 0) \
+        else "!! "
     print(f"{mark}{name}: found {r['found']}/{r['expected']}"
           + (f", hard {r['hard_found']}/{r['hard_expected']}" if r["hard_expected"] else "")
           + (f", closed {r['closed_ok']}/{r['closed_expected']}" if r["closed_expected"] else "")
           + f", {len(r['items'])} added, {r['seconds']}s")
     for i in r["items"]:
-        print(f"     + [{i.get('kind')}] {i['text']}" + (f"   ({i['project']})" if i.get("project") else ""))
+        print(f"     + [{i.get('kind')}] {i['text']}" + (f"   ({i['project']})" if i.get("project") else "")
+              + ("   (flagged as a possible copy)" if i.get("possible_duplicate_of") else ""))
     for k, label in (("missed", "missed"), ("wrong_open", "wrongly open"), ("extra", "not expected"),
                      ("closed_later", "added, closed later"), ("closed_wrongly", "closed wrongly"), ("leaks", "LEAKED"), ("unverified", "quote not in transcript"),
                      ("errors", "error")):
@@ -277,7 +286,7 @@ def rescore(path):
             "items", "sessions")
     for name, runs in data["cases"].items():
         for r in runs:
-            added = [dict(i, id=str(n)) for n, i in enumerate(r["items"])]
+            added = [{"id": str(n), **i} for n, i in enumerate(r["items"])]
             keep = {k: r.get(k, []) for k in kept}
             r.clear()
             r.update(score(cases[name], added, added), **keep)

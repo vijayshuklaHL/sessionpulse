@@ -1,0 +1,26 @@
+{
+ "about": "Two projects you linked by merging a copy earlier. Work listed under one is finished in a session of the other: it should be closed there, and not added again in the second project.",
+ "related": [["work/ops-notes", "work/payroll-scripts"]],
+ "seed": [
+  {"id": "r1", "text": "Run the monthly payroll pre-check before the 25th", "project": "work/ops-notes", "kind": "task"},
+  {"id": "r2", "text": "Renew the backup NAS warranty", "project": "work/ops-notes", "kind": "external"},
+  {"id": "r3", "text": "Add a dry-run flag to the payroll export", "project": "work/payroll-scripts", "kind": "task"}
+ ],
+ "sessions": [{"project": "work/payroll-scripts", "turns": [
+  ["user", "Let's do this month's payroll pre-check now."],
+  ["claude", "I ran `precheck.py --month 2026-10`. All 214 rows passed: no missing tax codes, no duplicate employee ids, and the totals match the HR export. The report is in `reports/precheck-2026-10.html`."],
+  ["user", "Great, that's the pre-check done for October, before the 25th. I'll send the report to finance myself tomorrow."],
+  ["claude", "Done for October. The report is ready to send."]
+ ]}],
+ "expect": {
+  "open": [
+   {"label": "Send the pre-check report to finance", "match": [["finance"], ["report", "send"]]}
+  ],
+  "not_open": [
+   {"label": "Run the payroll pre-check (done, and listed in the other project)", "match": [["pre-check", "precheck"]], "unless": ["finance", "send"]},
+   {"label": "Dry-run flag (already on the list)", "match": [["dry-run", "dry run"]]}
+  ],
+  "closed": ["r1"],
+  "kept_open": ["r2", "r3"]
+ }
+}

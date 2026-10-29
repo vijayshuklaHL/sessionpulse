@@ -564,6 +564,9 @@ if mode == "quotes":
     items[0]["quote"] = "Still open: ask the vendor. Key: sk-ant-abcdefghijklmnopqrstuvwx"
     items[1]["quote"] = "We agreed to pick the blue brand"
     resolved = [{"id": r, "quote": "draft the vendor message", "ref": 1} for r in resolved]
+if mode == "across":
+    print(json.dumps({"is_error": False, "usage": {}, "structured_output": {"same": [1, 7]}}))
+    sys.exit(0)
 if mode == "junk":
     items = [5, "text", {"text": ""}, {"text": ["x"]}, {"kind": "task"}, {"text": "Call the bank", "detail": 7}]
     resolved = resolved + ["not-shown", 3, None, os.environ.get("FAKE_EXTRA_RESOLVED")]
@@ -764,6 +767,59 @@ class FollowupTests(Fixture):
         self.assertIsNone(next(i for i in todos.load(self.cfg) if i["text"] == "old item")["done_at"])
         todos.merge_followups(self.cfg, {"id": "later", "project": "work/demo"}, [], [old["id"]])
         self.assertTrue(next(i for i in todos.load(self.cfg) if i["text"] == "old item")["done_at"])
+
+    def test_copy_in_another_project_is_flagged_then_merged(self):
+        add = lambda project, text: todos.merge_followups(self.cfg, {"id": project, "project": project},
+                                                          [{"text": text, "kind": "task"}], [])
+        add("work/ops", "Run the monthly payroll pre-check before the 25th")
+        add("work/payroll", "Run monthly payroll pre-check by the 25th")
+        add("work/payroll", "Fix the payroll export")  # too little in common: not flagged
+        first, copy, other = todos.load(self.cfg)
+        self.assertEqual(copy["possible_duplicate_of"], first["id"])
+        self.assertNotIn("possible_duplicate_of", other)
+        todos.apply(self.cfg, {"op": "merge", "id": copy["id"]})
+        copy = todos.load(self.cfg)[1]
+        self.assertEqual((copy["status"], copy["duplicate_of"], "possible_duplicate_of" in copy),
+                         ("archived", first["id"], False))
+        self.assertEqual(todos.related(self.cfg, "work/payroll"), {"work/ops"})
+
+    def test_not_the_same_is_remembered(self):
+        for project, text in (("work/ops", "Renew the TLS certificate for the status page"),
+                              ("work/payroll", "Renew the status page TLS certificate")):
+            todos.merge_followups(self.cfg, {"id": project, "project": project}, [{"text": text, "kind": "task"}], [])
+        first, copy = todos.load(self.cfg)
+        todos.apply(self.cfg, {"op": "not_same", "id": copy["id"]})
+        items = todos.load(self.cfg)
+        self.assertNotIn("possible_duplicate_of", items[1])
+        self.assertIsNone(todos.maybe_same(items[1], items, todos.links(self.cfg)["not_same"]))
+        self.assertEqual(todos.related(self.cfg, "work/ops"), set())
+        self.assertEqual(followups.pairs_across(self.cfg), [])
+
+    def test_related_projects_items_are_shown_and_closed(self):
+        todos.merge_followups(self.cfg, {"id": "x", "project": "work/other"}, [{"text": "old item", "kind": "task"}], [])
+        followups.scan(self.cfg)
+        self.assertNotIn("related projects", self.calls()[-1]["prompt"])
+        self.assertIsNone(todos.load(self.cfg)[0]["done_at"])  # another project, not linked: left alone
+        todos._link(self.cfg, "related", "work/demo", "work/other")
+        followups.scan(self.cfg, force=True)
+        self.assertIn("## Open to-dos in related projects", self.calls()[-1]["prompt"])
+        self.assertEqual(todos.load(self.cfg)[0]["closed_by"], SID)
+
+    def test_dedupe_across_projects(self):
+        for project, text in (("work/ops", "Rotate the backup server SSH key"),
+                              ("work/infra", "Rotate the SSH key on the backup server"),
+                              ("work/infra", "Order new office chairs")):
+            todos.apply(self.cfg, {"op": "add", "text": text, "project": project})
+        pairs = followups.pairs_across(self.cfg)
+        self.assertEqual([(a["text"], b["text"]) for a, b in pairs],
+                         [("Rotate the backup server SSH key", "Rotate the SSH key on the backup server")])
+        os.environ["FAKE_MODE"] = "across"  # answers "pair 1 is the same" (and a pair number that doesn't exist)
+        with unittest.mock.patch.object(config, "load", return_value=self.cfg), \
+             unittest.mock.patch("sys.stdout", io.StringIO()) as out:
+            cli.main(["dedupe", "--across", "--apply"])
+        self.assertIn("Archived 1 duplicate", out.getvalue())
+        self.assertEqual(sum(i.get("status") == "archived" for i in todos.load(self.cfg)), 1)
+        self.assertEqual(todos.related(self.cfg, "work/ops"), {"work/infra"})
 
     def test_checked_keeps_only_shown_ids(self):
         items, resolved = followups.checked({"items": "nonsense", "resolved": ["a", "b", "a", 1]}, {"a"})

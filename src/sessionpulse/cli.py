@@ -236,6 +236,8 @@ def cmd_followups(cfg, args):
 def cmd_dedupe(cfg, args):
     if not followups.claude_bin(cfg):
         sys.exit("error: the `claude` command was not found; set claude_command in config.toml")
+    if args.across:
+        return dedupe_across(cfg, args)
     items = todos.load(cfg)
     counts = Counter(i.get("project") or "" for i in items if todos.is_open(i))
     projects = [args.project] if args.project is not None else [p for p, n in counts.items() if n > 1]
@@ -263,6 +265,30 @@ def cmd_dedupe(cfg, args):
         print(f"\nArchived {total} duplicate(s); each keeps `duplicate_of` pointing at the one kept.")
     else:
         print(f"\n{total} duplicate(s) found. Run again with --apply to archive them, keeping the newest.")
+
+
+def dedupe_across(cfg, args):
+    pairs = followups.pairs_across(cfg)
+    print(f"{len(pairs)} pair(s) across projects look alike; asking Claude which are the same work…", flush=True)
+    if not pairs:
+        return
+    try:
+        groups = followups.find_duplicates_across(cfg, pairs)
+    except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        sys.exit(f"error: {exc}")
+    by_id = {i["id"]: i for i in todos.load(cfg)}
+    for g in groups:
+        print("\n  same:")
+        for x in g:
+            i = by_id.get(x, {})
+            print(f"    {x}  {i.get('text', '')}  ({i.get('project') or 'no project'})")
+    if args.apply:
+        n = todos.merge_duplicates(cfg, groups, link=True)
+        print(f"\nArchived {n} duplicate(s), keeping the newest (or the one in progress). Their projects now count "
+              "as related, so follow-ups in one can close work listed in the other.")
+    else:
+        print(f"\n{sum(len(g) - 1 for g in groups)} duplicate(s) found. Run again with --apply to archive them, "
+              "keeping the newest, and link their projects.")
 
 
 def main(argv=None):
@@ -295,6 +321,8 @@ def main(argv=None):
     d = sub.add_parser("dedupe", help="find open to-dos that are the same work reworded, with Claude")
     d.add_argument("-p", "--project", help="only this project (default: every project)")
     d.add_argument("--apply", action="store_true", help="archive the copies (default: only list them)")
+    d.add_argument("--across", action="store_true",
+                   help="look for the same work listed in different projects (one model call per 40 likely pairs)")
     sub.add_parser("hook", help=argparse.SUPPRESS)
     args = p.parse_args(argv)
     cfg = config.load()
