@@ -160,6 +160,7 @@ Log out and back in (on X11 you can press Alt+F2 and type `r` instead), then run
 | `sessionpulse doctor` | Checks the setup and warns if Claude Code's file formats look different |
 | `sessionpulse todo [add TEXT -p PROJECT \| done ID \| undo ID \| delete ID \| list-done]` | Your to-do list from the terminal |
 | `sessionpulse followups [--days N] [--session ID] [--now] [--again]` | Read recent sessions now and add their open follow-ups |
+| `sessionpulse dedupe [-p PROJECT] [--apply]` | Finds open to-dos that are the same work reworded; `--apply` archives the copies |
 | `sessionpulse snapshot` | Prints the dashboard data as JSON |
 
 ## Settings

@@ -313,6 +313,31 @@ class TodoTests(Fixture):
         self.assertEqual(sorted(d["text"] for d in todos.dismissed(self.cfg)), ["a", "b"])
         self.assertEqual(todos.merge_followups(self.cfg, {"id": "s2", "project": "p"}, [{"text": "a"}], []), (0, 0))
 
+    def test_reworded_followups_skipped(self):
+        merge = todos.merge_followups
+        merge(self.cfg, {"id": "s", "project": "p"},
+              [{"text": "Put Grafana alert rules on no data and execution error"}], [])
+        self.assertEqual(merge(self.cfg, {"id": "s2", "project": "p"},
+                               [{"text": "Check that Grafana alert rules fire on no data and on execution error"},
+                                {"text": "Disable Telnet on the Credo routers"},
+                                {"text": "Disable WAN management on the Credo routers"}], []), (2, 0))
+        # the same words in another project are a different to-do
+        self.assertEqual(merge(self.cfg, {"id": "s3", "project": "q"},
+                               [{"text": "Check Grafana alert rules on no data and execution error"}], []), (1, 0))
+
+    def test_merge_duplicates(self):
+        a = todos.apply(self.cfg, {"op": "add", "text": "old wording"})[-1]["id"]
+        b = todos.apply(self.cfg, {"op": "add", "text": "new wording"})[-1]["id"]
+        c = todos.apply(self.cfg, {"op": "add", "text": "in progress"})[-1]["id"]
+        todos.apply(self.cfg, {"op": "set", "id": c, "doing": True})
+        self.assertEqual(todos.merge_duplicates(self.cfg, [[a, b, c], [a, "missing"]]), 2)
+        by = {i["id"]: i for i in todos.load(self.cfg)}
+        self.assertTrue(todos.is_open(by[c]))  # the one in progress is kept
+        self.assertEqual([(by[x]["status"], by[x]["duplicate_of"]) for x in (a, b)], [("archived", c)] * 2)
+        it = next(i for i in todos.apply(self.cfg, {"op": "set", "id": a, "status": None}) if i["id"] == a)
+        self.assertNotIn("duplicate_of", it)
+        self.assertEqual(todos.merge_duplicates(self.cfg, [[b, c]]), 0)  # b is already archived
+
     def test_board_moves(self):
         i = todos.apply(self.cfg, {"op": "add", "text": "x"})[0]["id"]
         it = todos.apply(self.cfg, {"op": "set", "id": i, "kind": "decision", "doing": True})[0]
@@ -324,6 +349,23 @@ class TodoTests(Fixture):
         self.assertEqual((it["done_at"], it["kind"]), (None, None))
         with self.assertRaises(ValueError):
             todos.apply(self.cfg, {"op": "set", "id": i, "kind": "nope"})
+
+    def test_hold_and_archive(self):
+        i = todos.apply(self.cfg, {"op": "add", "text": "x"})[0]["id"]
+        it = todos.apply(self.cfg, {"op": "set", "id": i, "doing": True})[0]
+        it = todos.apply(self.cfg, {"op": "set", "id": i, "done": False, "status": "hold"})[0]
+        self.assertEqual((it["status"], it["doing"], it["done_at"]), ("hold", False, None))
+        self.assertFalse(todos.is_open(it))
+        it = todos.apply(self.cfg, {"op": "set", "id": i, "status": "archived"})[0]
+        self.assertEqual(it["status"], "archived")
+        it = todos.apply(self.cfg, {"op": "set", "id": i, "done": False, "status": None})[0]
+        self.assertNotIn("status", it)
+        self.assertTrue(todos.is_open(it))
+        todos.apply(self.cfg, {"op": "set", "id": i, "status": "hold"})
+        it = todos.apply(self.cfg, {"op": "done", "id": i})[0]
+        self.assertNotIn("status", it)  # finishing a held item un-parks it
+        with self.assertRaises(ValueError):
+            todos.apply(self.cfg, {"op": "set", "id": i, "status": "someday"})
 
     def test_bad_ops_rejected(self):
         for op in ({"op": "add", "text": "  "}, {"op": "done", "id": "missing"}, {"op": "x"}, []):

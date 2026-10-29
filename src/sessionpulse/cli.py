@@ -5,9 +5,11 @@ import json
 import os
 import signal
 import socket
+import subprocess
 import sys
 import threading
 import webbrowser
+from collections import Counter
 
 from . import __version__, config, followups, hook, install, reader, server, status, todos, tray
 
@@ -161,11 +163,16 @@ def cmd_todo(cfg, args):
     except ValueError as exc:
         sys.exit(f"error: {exc}")
     items = todos.load(cfg)
-    show = [i for i in items if bool(i["done_at"]) == (args.action == "list-done")]
+    want = (lambda i: i["done_at"]) if args.action == "list-done" else todos.is_open
+    show = [i for i in items if want(i)]
     for i in show:
         tag = f"  [{i['project']}]" if i.get("project") else ""
         when = f"  done {i['done_at'][:10]}" if i["done_at"] else ""
         print(f"{i['id']}  {i['text']}{tag}{when}")
+    parked = [i for i in items if not i["done_at"] and i.get("status") in todos.STATUSES]
+    if parked and args.action != "list-done":
+        held = sum(i["status"] == "hold" for i in parked)
+        print(f"({held} on hold, {len(parked) - held} archived; see the dashboard board)")
     if not show:
         print("Nothing here." if args.action == "list-done" else "No open to-dos.")
 
@@ -182,6 +189,38 @@ def cmd_followups(cfg, args):
     print(f"Read {n} session(s): {added} follow-up(s) added, {closed} closed.")
     if not cfg.followups:
         print("Tip: add `followups = true` to ~/.config/sessionpulse/config.toml to do this automatically.")
+
+
+def cmd_dedupe(cfg, args):
+    if not followups.claude_bin(cfg):
+        sys.exit("error: the `claude` command was not found; set claude_command in config.toml")
+    items = todos.load(cfg)
+    counts = Counter(i.get("project") or "" for i in items if todos.is_open(i))
+    projects = [args.project] if args.project is not None else [p for p, n in counts.items() if n > 1]
+    text = {i["id"]: i["text"] for i in items}
+    total = 0
+    for project in projects:
+        try:
+            groups = followups.find_duplicates(cfg, project)
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            print(f"{project or '(no project)'}: skipped, {exc}", flush=True)
+            continue
+        if not groups:
+            continue
+        print(f"\n{project or '(no project)'}", flush=True)
+        for g in groups:
+            print("  same:")
+            for x in g:
+                print(f"    {x}  {text.get(x, '')}")
+        if args.apply:
+            n = todos.merge_duplicates(cfg, groups)
+        else:
+            n = sum(len(g) - 1 for g in groups)
+        total += n
+    if args.apply:
+        print(f"\nArchived {total} duplicate(s); each keeps `duplicate_of` pointing at the one kept.")
+    else:
+        print(f"\n{total} duplicate(s) found. Run again with --apply to archive them, keeping the newest.")
 
 
 def main(argv=None):
@@ -209,6 +248,9 @@ def main(argv=None):
     f.add_argument("--session", help="only this session id (or its first characters)")
     f.add_argument("--now", action="store_true", help="include sessions that are still active")
     f.add_argument("--again", action="store_true", help="re-read sessions already read")
+    d = sub.add_parser("dedupe", help="find open to-dos that are the same work reworded, with Claude")
+    d.add_argument("-p", "--project", help="only this project (default: every project)")
+    d.add_argument("--apply", action="store_true", help="archive the copies (default: only list them)")
     sub.add_parser("hook", help=argparse.SUPPRESS)
     args = p.parse_args(argv)
     cfg = config.load()

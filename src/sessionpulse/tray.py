@@ -13,7 +13,7 @@ import webbrowser
 from datetime import datetime
 from importlib import resources
 
-from . import config, followups, reader, server
+from . import config, followups, reader, server, todos
 
 SLOTS = 8  # fixed rows for open sessions: replacing the whole menu would close it while open
 LIVE = ("busy", "idle", "running")
@@ -140,7 +140,7 @@ def run(cfg: config.Config):
                         f"{fmt_n(v['today_output'])} output tokens")
         warn.set_label(f"⚠ {len(v['warnings'])} data warning(s): see dashboard")
         warn.set_visible(bool(v["warnings"]))
-        n = sum(1 for t in snap.get("todos") or [] if not t.get("done_at"))
+        n = sum(1 for t in snap.get("todos") or [] if todos.is_open(t))
         board.set_label(f"Open to-do board ({n} open)" if n else "Open to-do board")
         return False
 

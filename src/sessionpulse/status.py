@@ -9,7 +9,7 @@ import os
 import time
 from pathlib import Path
 
-from . import __version__, config, reader, tray
+from . import __version__, config, reader, todos, tray
 
 SCHEMA = 1
 INTERVAL = 5  # seconds between writes
@@ -42,7 +42,7 @@ def build(cfg: config.Config, snap, today=None):
             "active_hours": round(v["today_hours"], 2),
             "output_tokens": int(v["today_output"]),
         },
-        "todos_open": sum(1 for t in snap.get("todos") or [] if not t.get("done_at")),
+        "todos_open": sum(1 for t in snap.get("todos") or [] if todos.is_open(t)),
         "warnings": len(v["warnings"]),
     }
 

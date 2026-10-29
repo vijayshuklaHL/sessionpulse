@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.3 (2026-10-29)
 
+- Board: **On hold** and **Archived** columns. Parked items are neither open nor done; `todo list` and the open counts leave them out, and follow-ups never send archived items to Claude. Finishing a held item un-parks it.
+- Follow-ups no longer pile up reworded copies of the same to-do. Claude now sees the project's newest 150 open items (it used to get the oldest 40, so busy projects got their recent items added again), and a new item is skipped when it shares most of its words with an open, recently done or dismissed one in the same project.
+- `sessionpulse dedupe [-p PROJECT] [--apply]`: asks Claude which open to-dos in each project are the same work reworded and lists them; `--apply` archives the copies, keeping the newest (or the one in progress), each marked `duplicate_of` the one kept.
 - `sessionpulse daemon`: the dashboard server and follow-ups without a panel icon, writing `status.json` (open/working sessions, today's totals, open to-dos; no token, mode 0600) every 5 seconds for panel widgets such as the coming GNOME extension. `install --daemon` starts it at login; `doctor` reports whether status.json is fresh. Format: docs/status-json.md.
 - GNOME Shell extension (45 to 48) in `gnome-extension/`: a top-bar indicator and menu that read status.json. No network and no subprocesses. Build it with `gnome-extension/pack.sh`.
 

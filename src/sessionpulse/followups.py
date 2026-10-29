@@ -30,6 +30,7 @@ DIGEST_CHARS = 60000   # how much of a transcript goes to the model
 USER_CHARS = 1200      # per prompt
 CLAUDE_CHARS = 2500    # per reply
 MAX_ITEMS = 12
+MAX_OPEN = 150         # open to-dos shown to the model per project
 TIMEOUT = 180
 
 SYSTEM = """You read a transcript of a Claude Code session between a user and Claude and list the \
@@ -51,8 +52,9 @@ English, naming the concrete thing ("Ask the vendor for the September invoice br
 Put the reason or context in `detail` (max 200 characters). Never copy passwords, keys or tokens into items.
 
 You also get the user's currently open to-dos for this project, with ids. Put an id in `resolved` only \
-if this transcript clearly shows that item was completed. Do not repeat an open to-do as a new item, and \
-do not re-add anything listed under "dismissed"."""
+if this transcript clearly shows that item was completed. Do not repeat an open to-do as a new item, even \
+in different words: if an open to-do already covers the work, leave it out. Do not re-add anything listed \
+under "dismissed"."""
 
 SCHEMA = {
     "type": "object",
@@ -111,15 +113,15 @@ def claude_bin(cfg):
     return None
 
 
-def ask_claude(cfg, prompt):
+def ask_claude(cfg, prompt, system=SYSTEM, schema=SCHEMA):
     exe = claude_bin(cfg)
     if not exe:
         raise RuntimeError("the `claude` command was not found; set claude_command in config.toml")
     work = cfg.data / "followups-cwd"
     work.mkdir(parents=True, exist_ok=True)
     cmd = [exe, "-p", "--model", cfg.followups_model, "--no-session-persistence", "--tools", "",
-           "--settings", json.dumps({"disableAllHooks": True}), "--system-prompt", SYSTEM,
-           "--output-format", "json", "--json-schema", json.dumps(SCHEMA)]
+           "--settings", json.dumps({"disableAllHooks": True}), "--system-prompt", system,
+           "--output-format", "json", "--json-schema", json.dumps(schema)]
     env = {**os.environ, "SESSIONPULSE_CHILD": "1"}
     r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, cwd=work, env=env, timeout=TIMEOUT)
     try:
@@ -156,7 +158,10 @@ def process(cfg, sess, path):
     """Extract follow-ups from one session and merge them into the to-do list."""
     items = todos.load(cfg)
     project = sess.get("project") or ""
-    open_ = [i for i in items if not i.get("done_at") and i.get("project") == project][:40]
+    # newest first: the model must see recent items, or it adds them again reworded
+    open_ = sorted((i for i in items if not i.get("done_at") and i.get("status") != "archived"
+                    and i.get("project") == project),
+                   key=lambda i: i.get("created") or "", reverse=True)[:MAX_OPEN]
     dismissed = [d for d in todos.dismissed(cfg) if d.get("project") == project][-40:]
     prompt = digest(path, project)
     prompt += "\n\n## Open to-dos for this project\n" + (
@@ -165,6 +170,39 @@ def process(cfg, sess, path):
         "\n".join(f"- {d['text']}" for d in dismissed) or "(none)")
     out = ask_claude(cfg, prompt)
     return todos.merge_followups(cfg, sess, out.get("items") or [], out.get("resolved") or [])
+
+
+# ---------- one-off cleanup ----------
+DEDUPE_SYSTEM = """You get one project's open to-do list, one item per line with its id. Group the items \
+that are the same piece of work written in different words. Reply only with the JSON the schema asks for.
+
+Two items are duplicates only if doing one would finish the other. Items about different devices, sites, \
+people, dates or steps are NOT duplicates, even if worded alike ("Disable Telnet on the routers" and \
+"Disable WAN management on the routers" are separate). A broader item does not swallow a narrower one \
+unless it names that same work. Leave out every item that has no duplicate. When unsure, leave it out."""
+
+DEDUPE_SCHEMA = {
+    "type": "object",
+    "properties": {"groups": {"type": "array", "items": {
+        "type": "array", "minItems": 2, "items": {"type": "string"}}}},
+    "required": ["groups"],
+}
+
+
+def find_duplicates(cfg, project):
+    """Ask the model which open to-dos in one project are reworded copies; returns groups of ids."""
+    open_ = [i for i in todos.load(cfg) if todos.is_open(i) and (i.get("project") or "") == (project or "")]
+    if len(open_) < 2:
+        return []
+    ids = {i["id"] for i in open_}
+    out = ask_claude(cfg, "\n".join(f"[{i['id']}] {i['text']}" for i in open_),
+                     system=DEDUPE_SYSTEM, schema=DEDUPE_SCHEMA)
+    groups = []
+    for g in out.get("groups") or []:
+        g = [x for x in dict.fromkeys(map(str, g)) if x in ids]
+        if len(g) > 1:
+            groups.append(g)
+    return groups
 
 
 def candidates(cfg, snap, days=None, idle_minutes=None, force=False):
