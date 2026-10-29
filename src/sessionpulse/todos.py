@@ -12,8 +12,10 @@ import threading
 from datetime import datetime
 
 MAX_TEXT = 500
+MAX_DETAIL = 600
 KINDS = ("external", "checklist", "decision", "waiting", "task")
 STATUSES = ("hold", "archived")  # parked items: not done, but not on the active list either
+REASONS = ("not_useful", "wrong_project")  # why a follow-up was dismissed (optional)
 lock = threading.Lock()
 
 
@@ -165,8 +167,9 @@ def merge_followups(cfg, sess, found, resolved):
     """Add follow-ups found in a session and close the ones it resolved.
 
     Returns (added, closed). Skips anything already on the list or dismissed,
-    including the same to-do reworded (see similar()) within the project."""
-    added = closed = 0
+    including the same to-do reworded (see similar()) within the project. A found item
+    with `after` (the id of an open item it waits on) goes into that item's detail."""
+    added = closed = noted = 0
     project = sess.get("project")
     here = {project} | related(cfg, project)  # closing reaches projects you linked to this one
     not_same = links(cfg)["not_same"]
@@ -180,8 +183,16 @@ def merge_followups(cfg, sess, found, resolved):
         near = [i["text"] for i in items if i.get("project") == project
                 and (not i.get("done_at") or _recent(i["done_at"]))]
         near += [d.get("text", "") for d in gone if d.get("project") == project]
+        by_id = {i["id"]: i for i in items}
         for f in found:
             text = redact(_clean(f.get("text") if isinstance(f, dict) else "", 200))
+            first = by_id.get(f.get("after")) if isinstance(f, dict) else None
+            if text and first and is_open(first):  # a step that waits on an open item: add it to that item's notes
+                then = f"Then: {text}"
+                if _norm(then) not in _norm(first.get("detail") or ""):
+                    first["detail"] = _clean(f"{first.get('detail') or ''} {then}", MAX_DETAIL)
+                    noted += 1
+                continue
             if not text or _norm(text) in seen or any(similar(text, t) for t in near):
                 continue
             seen.add(_norm(text))
@@ -207,7 +218,7 @@ def merge_followups(cfg, sess, found, resolved):
                 if isinstance(why.get(i["id"]), dict):
                     i["closed_evidence"] = why[i["id"]]
                 closed += 1
-        if added or closed:
+        if added or closed or noted:
             _save(cfg, items)
     return added, closed
 
@@ -261,10 +272,20 @@ def _reopen(item):
     item.pop("closed_evidence", None)
 
 
+def _dismissal(item, reason=None):
+    d = {"text": item["text"], "project": item.get("project"), "at": _now()}
+    if item.get("kind"):
+        d["kind"] = item["kind"]
+    if reason:
+        d["reason"] = reason
+    return d
+
+
 def apply(cfg, op):
     """Run one change and return the new list.
 
-    op is a dict: {"op": "add", "text", "project"?} | {"op": "done"|"undo"|"delete", "id"}
+    op is a dict: {"op": "add", "text", "project"?} | {"op": "done"|"undo", "id"}
+    | {"op": "delete", "id", "reason"?} (reason: one of REASONS, kept with the dismissal)
     | {"op": "delete", "ids": [...]} | {"op": "set", "id", "kind"?, "doing"?, "done"?, "status"?}
     | {"op": "edit", "id", "text"} | {"op": "merge"|"not_same", "id"} (an item flagged as
     `possible_duplicate_of` another). Raises ValueError on anything else."""
@@ -285,13 +306,14 @@ def apply(cfg, op):
             gone = [i for i in items if i["id"] in ids]
             items = [i for i in items if i["id"] not in ids]
             d = dismissed(cfg)
-            d += [{"text": i["text"], "project": i.get("project"), "at": _now()}
-                  for i in gone if i.get("source") == "session"]
+            d += [_dismissal(i) for i in gone if i.get("source") == "session"]
             _write(_dismissed_path(cfg), d[-2000:])
         elif kind in ("done", "undo", "delete", "edit", "set", "merge", "not_same"):
             hit = next((i for i in items if i["id"] == op.get("id")), None)
             if hit is None:
                 raise ValueError("no such item")
+            if op.get("reason") not in (*REASONS, None, ""):
+                raise ValueError("unknown reason")
             if kind in ("merge", "not_same"):
                 twin = next((i for i in items if i["id"] == hit.get("possible_duplicate_of")), None)
                 hit.pop("possible_duplicate_of", None)
@@ -337,7 +359,7 @@ def apply(cfg, op):
                 items.remove(hit)
                 if hit.get("source") == "session":  # remember it, so it isn't picked up again
                     d = dismissed(cfg)[-2000:]
-                    d.append({"text": hit["text"], "project": hit.get("project"), "at": _now()})
+                    d.append(_dismissal(hit, op.get("reason")))
                     _write(_dismissed_path(cfg), d)
             else:
                 text = _clean(op.get("text"))
@@ -348,3 +370,24 @@ def apply(cfg, op):
             raise ValueError(f"unknown op {kind!r}")
         _save(cfg, items)
         return items
+
+
+def kind_stats(cfg):
+    """Follow-ups per kind: {kind: {"added", "open", "done", "parked", "not_useful", "dismissed"}}.
+    Dismissals from before kinds were kept with them count under "unknown"."""
+    out = {}
+
+    def row(k):
+        return out.setdefault(k or "unknown", dict.fromkeys(("added", "open", "done", "parked", "not_useful",
+                                                             "dismissed"), 0))
+    for i in load(cfg):
+        if i.get("source") != "session":
+            continue
+        r = row(i.get("kind"))
+        r["added"] += 1
+        r["done" if i.get("done_at") else "open" if is_open(i) else "parked"] += 1
+    for d in dismissed(cfg):
+        r = row(d.get("kind"))
+        r["added"] += 1
+        r["not_useful" if d.get("reason") == "not_useful" else "dismissed"] += 1
+    return out

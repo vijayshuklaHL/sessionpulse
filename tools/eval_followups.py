@@ -11,6 +11,8 @@ the real followups.process() on them with `claude -p`, and scores the result:
   hard          the same, for items the current design is known to miss
   wrong_open    items added that were finished, rejected or already listed
                 (items in a case's `ok` list are fine either way and not counted)
+  folded        expected items found only in another open item's detail, as a step that waits on it
+                (counted as found)
   duplicates    extra open items for work already found (in any project)
   flagged       of those, copies shown as "maybe the same as" the other (one click to merge)
   closures      seeded to-dos correctly closed, and wrongly closed
@@ -139,6 +141,11 @@ def score(spec, added, final):
             wrong.append(item["text"])
         else:
             extra.append(item["text"])
+    folded = 0
+    for n, rule in enumerate(exp["open"]):  # a step noted on the open item it waits on is not lost
+        if not hits[n] and any(todos.is_open(i) and matches(i.get("detail") or "", rule) for i in final):
+            hits[n].append({})
+            folded += 1
     easy = [n for n, rule in enumerate(exp["open"]) if not rule.get("hard")]
     hard = [n for n, rule in enumerate(exp["open"]) if rule.get("hard")]
     by_id = {i["id"]: i for i in final}
@@ -147,9 +154,10 @@ def score(spec, added, final):
         "hard_expected": len(hard), "hard_found": sum(1 for n in hard if hits[n]),
         "missed": [exp["open"][n]["label"] for n in range(len(exp["open"])) if not hits[n]],
         "wrong_open": wrong,
+        "folded": folded,
         "duplicates": sum(max(0, len(h) - 1) for h in hits.values()),
         "flagged": sum(1 for h in hits.values() for i in h
-                       if i.get("possible_duplicate_of") in {x.get("id") for x in h}),
+                       if i.get("possible_duplicate_of") and i["possible_duplicate_of"] in {x.get("id") for x in h}),
         "extra": extra,
         "ok": fine,
         "closed_later": later,
@@ -217,6 +225,7 @@ def run_case(name, spec, model, claude_command=""):
     result = score(spec, added, final)
     result.update(errors=errors, seconds=round(time.monotonic() - began, 1), usage=_local.usage,
                   unverified=_local.unverified,
+                  final_open=[{"id": i["id"], "detail": i.get("detail")} for i in final if todos.is_open(i)],
                   items=[{k: i.get(k) for k in ("id", "text", "kind", "detail", "project", "evidence", "done_at",
                                                 "possible_duplicate_of") if i.get(k)}
                          for i in added])
@@ -245,6 +254,7 @@ def summarise(runs):
         "hard_recall": round(tot("hard_found") / tot("hard_expected"), 3) if tot("hard_expected") else None,
         "wrong_open": count("wrong_open"),
         "wrong_open_rate": round(count("wrong_open") / max(1, sum(len(r["items"]) for r in flat)), 3),
+        "folded": tot("folded"),
         "duplicates_per_session": round(tot("duplicates") / max(1, sessions), 3),
         "duplicates_flagged": f"{sum(r.get('flagged', 0) for r in flat)}/{tot('duplicates')}",
         "extra": count("extra"),
@@ -282,14 +292,15 @@ def show_case(name, r):
 def rescore(path):
     """Score saved answers again with the cases' current rules. No model calls."""
     data, cases = json.loads(Path(path).read_text()), load_cases()
-    kept = ("closed_ok", "closed_expected", "closed_wrongly", "errors", "seconds", "usage", "unverified",
+    kept = ("closed_ok", "closed_expected", "closed_wrongly", "errors", "seconds", "usage", "unverified", "final_open",
             "items", "sessions")
     for name, runs in data["cases"].items():
         for r in runs:
             added = [{"id": str(n), **i} for n, i in enumerate(r["items"])]
             keep = {k: r.get(k, []) for k in kept}
             r.clear()
-            r.update(score(cases[name], added, added), **keep)
+            final = added + [i for i in r.get("final_open", ()) if i["id"] not in {x.get("id") for x in added}]
+            r.update(score(cases[name], added, final), **keep)
     data["summary"] = summarise(data["cases"])
     Path(path).write_text(json.dumps(data, indent=1) + "\n")
     return data["summary"]

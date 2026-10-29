@@ -267,6 +267,10 @@ a:hover { text-decoration: underline; }
 .why-quote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 6px 6px 0; }
 .why-quote blockquote { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
 .why-quote figcaption { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.dismiss-why { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; color: var(--text-muted); }
+.dismiss-why button { font: inherit; font-size: 11px; border: 1px solid var(--border); background: var(--surface-1);
+  color: var(--text-secondary); border-radius: 5px; padding: 1px 6px; cursor: pointer; }
+.dismiss-why button[data-reason="not_useful"] { border-color: color-mix(in srgb, var(--crit) 45%, var(--border)); }
 .dup { margin-top: 6px; padding: 5px 7px; border-radius: 6px; font-size: 12px; color: var(--text-secondary);
   background: color-mix(in srgb, var(--accent) 9%, transparent); border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border)); }
 .dup q { color: var(--text-primary); }
@@ -687,6 +691,28 @@ const dayLabel = iso => { const d = dkey(new Date(iso)), t = new Date(); const t
 const KIND = {external: "Outside work", checklist: "Checklist", decision: "Decide", waiting: "Waiting on", task: "Later"};
 const PARKED = ["hold", "archived"];
 const isOpen = i => !i.done_at && !PARKED.includes(i.status);
+// × on a follow-up asks why first (inline, no dialog); the answer steers later follow-ups
+let DISMISSING = null, DISMISS_TIMER = 0;
+const delBtn = i => i.source === "session" && DISMISSING === i.id
+  ? `<span class="dismiss-why" role="group" aria-label="Why dismiss it?">Dismiss as: <button data-del="${esc(i.id)}" data-reason="not_useful" title="Follow-ups will avoid items like this">Not useful</button><button data-del="${esc(i.id)}" data-reason="wrong_project">Wrong project</button>${i.done_at ? "" : `<button data-done="${esc(i.id)}" title="Mark it done instead">Already done</button>`}<button data-del="${esc(i.id)}" data-reason="">Just remove</button><button data-undismiss title="Keep it">Cancel</button></span>`
+  : `<button class="x" data-del="${esc(i.id)}" title="${i.source === "session" ? "Dismiss (won't be picked up again)" : "Delete"}" aria-label="Delete">×</button>`;
+function askDismiss(id) {
+  DISMISSING = id; clearTimeout(DISMISS_TIMER);
+  DISMISS_TIMER = setTimeout(() => { DISMISSING = null; render(); }, 10000);
+  render();
+}
+document.addEventListener("click", ev => {  // before the lists' and board's own [data-del] handlers
+  const t = ev.target.closest("[data-del],[data-done],[data-undismiss]"); if (!t) return;
+  const i = (DATA.todos || []).find(x => x.id === (t.dataset.del || t.dataset.done));
+  if (t.hasAttribute("data-undismiss")) { DISMISSING = null; ev.stopPropagation(); return render(); }
+  if (t.dataset.done) { ev.stopPropagation(); DISMISSING = null; return todoOp({op: "done", id: t.dataset.done}); }
+  if (!i || i.source !== "session") return;  // your own items: deleted as before
+  ev.stopPropagation(); ev.preventDefault();
+  if (!t.hasAttribute("data-reason")) return askDismiss(i.id);
+  DISMISSING = null;
+  todoOp(t.dataset.reason ? {op: "delete", id: i.id, reason: t.dataset.reason} : {op: "delete", id: i.id});
+}, true);
+
 // "Maybe the same as …": a follow-up that looks like an open item in another project
 const twinOf = i => { const t = !i.done_at && i.possible_duplicate_of && (DATA.todos || []).find(x => x.id === i.possible_duplicate_of);
   return t && isOpen(t) ? t : null; };
@@ -702,7 +728,7 @@ const todoRow = (i, done, grouped) => {
   <span class="txt">${i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind] || i.kind)}</span>` : ""}${esc(i.text)}${i.project && !grouped ? `<span class="tag">${esc(i.project)}</span>` : ""}
     ${i.detail && !done ? `<span class="detail">${esc(i.detail)}</span>` : ""}${done ? "" : from}${auto}${dupNote(i)}</span>
   <span class="when" title="${done ? "Done " : i.session_at ? "Discussed " : "Added "}${esc(fmtD(done ? i.done_at : born))}">${done ? fmtT(i.done_at) : ago(Date.parse(born))}</span>
-  <button class="x" data-del="${esc(i.id)}" title="${i.source === "session" ? "Dismiss (won't be picked up again)" : "Delete"}" aria-label="Delete">×</button></li>`;
+  ${delBtn(i)}</li>`;
 };
 
 function renderTodos() {
@@ -842,7 +868,7 @@ const card = i => {
       ${i.closed_by && i.done_at ? `<span title="A later session showed this was done">· auto</span>` : ""}
       <span class="acts">${i.source === "session" && i.session ? `<button class="why-btn" data-why="${esc(i.id)}" title="${i.closed_by && i.done_at ? "What closed it" : "Where this came from"}">Why?</button>` : ""}${i.session && !i.done_at && !parked ? `<button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens the session this came from">Resume</button>` : ""}
         <select data-move="${esc(i.id)}" aria-label="Move to"><option value="">Move…</option>${cols.filter(c => c[0] !== here).map(c => `<option value="${c[0]}">${c[1]}</option>`).join("")}</select>
-        <button class="x" data-del="${esc(i.id)}" title="${i.source === "session" ? "Dismiss (won't be picked up again)" : "Delete"}" aria-label="Delete">×</button></span>
+        ${delBtn(i)}</span>
     </div></div>`;
 };
 

@@ -10,6 +10,9 @@
 - Follow-ups notice the same work listed in another project: the new item is still added, with a **Maybe the same as …** note on the board and the to-do list. **Merge** archives it as a copy of the other one; **Not the same** keeps both and never flags that pair again.
 - Projects you merged a copy between count as related: follow-ups in either one see the other's open items, so they don't add them again and can close them when a session finishes the work.
 - `sessionpulse dedupe --across [--apply]`: finds open to-dos that look alike in different projects, asks Claude about those pairs only, and with `--apply` archives the copies and links their projects.
+- Dismissing a follow-up asks why, in place: **Not useful**, **Wrong project**, **Already done** (marks it done instead) or **Just remove**. Recent "not useful" items in a project are shown to the model as examples of what not to add there.
+- Follow-ups no longer list a step that waits on another open item ("decide on the fonts once legal replies") as a separate to-do; it goes in that item's detail.
+- `sessionpulse followups status` shows, per kind, how many follow-ups were added, are open, done, parked, or dismissed as not useful.
 - `sessionpulse serve` explains a busy port in one line instead of a traceback.
 - `tools/eval_followups.py` and made-up test cases measure follow-up quality; see CONTRIBUTING.md.
 

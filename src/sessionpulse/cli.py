@@ -205,6 +205,15 @@ def followups_status(cfg):
         u = followups.usage_totals(cfg, days)
         print(f"  {label:8} {u['calls']:4} calls  {tokens(u['tokens']):>6} tokens "
               f"({tokens(u['output_tokens'])} written)  ${u['cost_usd']:.2f}")
+    kinds = todos.kind_stats(cfg)
+    if kinds:
+        print("By kind (dismissed items count as added; \"noise\" = dismissed as not useful):")
+        print(f"  {'':10} {'added':>6} {'open':>6} {'done':>6} {'parked':>6} {'noise':>6} {'other':>6}")
+        for k in (*todos.KINDS, "unknown"):
+            if k in kinds:
+                r = kinds[k]
+                print(f"  {k:10} " + " ".join(f"{r[c]:>6}" for c in ("added", "open", "done", "parked",
+                                                                       "not_useful", "dismissed")))
     bad = followups.failing(cfg)
     if not bad:
         print("No session is failing.")

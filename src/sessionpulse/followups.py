@@ -32,6 +32,7 @@ CLAUDE_CHARS = 2500    # per reply
 MAX_ITEMS = 12
 MAX_OPEN = 150         # open to-dos shown to the model per project
 MAX_RELATED = 60       # and from the projects linked to it
+NOT_USEFUL = 10        # recent "not useful" dismissals shown as examples of noise
 QUOTE_CHARS = 160
 EXCERPT_CHARS = 4000   # per turn, in the dashboard's transcript excerpt
 TIMEOUT = 180
@@ -56,6 +57,11 @@ log in somewhere, send or sign something, buy or renew something)
 Do not list: things completed in the session; Claude's own intermediate steps; vague ideas; general \
 advice; anything the user explicitly rejected. Merge duplicates. If nothing is open, return no items.
 
+A step that can only start after another open item is not an item of its own: "decide on the fonts once \
+legal replies" belongs in the `detail` of "Get legal's answer on the font licenses", and "send a test, then \
+enable it" is one item. If the item it waits on is already an open to-do, return the step as an item with \
+`after` set to that to-do's id: it is added to that to-do's notes, not listed separately.
+
 Write each item as a short imperative the user would put on their own list (max 110 characters), in \
 English, naming the concrete thing ("Ask the vendor for the September invoice broken down by team"). \
 Put the reason or context in `detail` (max 200 characters). Never copy passwords, keys or tokens into items.
@@ -64,7 +70,8 @@ You also get the user's currently open to-dos for this project, with ids, and so
 projects where the same work is also tracked; treat both lists the same way. Put an id in `resolved` only \
 if this transcript clearly shows that item was completed. Do not repeat an open to-do as a new item, even \
 in different words: if an open to-do already covers the work, leave it out. Do not re-add anything listed \
-under "dismissed".
+under "dismissed". Items listed under "not useful" were dismissed by the user as noise: \
+don't add items of that sort.
 
 Turns are numbered (### #12 USER ...). For every item, set `quote` to a short passage copied exactly, word for \
 word, from one turn (max 160 characters) that shows the item is still open, preferring the user's own words, and \
@@ -77,7 +84,8 @@ SCHEMA = {
         "items": {"type": "array", "maxItems": MAX_ITEMS, "items": {
             "type": "object",
             "properties": {"text": {"type": "string"}, "kind": {"type": "string", "enum": list(KINDS)},
-                           "detail": {"type": "string"}, "quote": {"type": "string"}, "ref": {"type": "integer"}},
+                           "detail": {"type": "string"}, "quote": {"type": "string"}, "ref": {"type": "integer"},
+                           "after": {"type": "string"}},
             "required": ["text", "kind", "quote"]}},
         "resolved": {"type": "array", "items": {
             "type": "object",
@@ -332,6 +340,9 @@ def checked(out, shown):
     Resolved entries come back as dicts: {"id", "quote"?, "ref"?}."""
     items = out.get("items") if isinstance(out.get("items"), list) else []
     items = [f for f in items if isinstance(f, dict) and isinstance(f.get("text"), str) and f["text"].strip()]
+    for f in items:
+        if f.get("after") not in shown:
+            f.pop("after", None)
     resolved, seen = [], set()
     for r in out.get("resolved") if isinstance(out.get("resolved"), list) else []:
         r = {"id": r} if isinstance(r, str) else r
@@ -353,7 +364,9 @@ def process(cfg, sess, path, usage=None):
 
     open_ = newest(lambda i: i.get("project") == project, MAX_OPEN)
     others = newest(lambda i: i.get("project") in linked, MAX_RELATED) if linked else []
-    dismissed = [d for d in todos.dismissed(cfg) if d.get("project") == project][-40:]
+    gone = [d for d in todos.dismissed(cfg) if d.get("project") == project]
+    dismissed = gone[-40:]
+    noise = [d for d in gone if d.get("reason") == "not_useful"][-NOT_USEFUL:]
     turns = []
     prompt = digest(path, project, turns=turns)
     prompt += "\n\n## Open to-dos for this project\n" + (
@@ -363,6 +376,8 @@ def process(cfg, sess, path, usage=None):
             f"- [{i['id']}] {i['text']} ({i['project']})" for i in others)
     prompt += "\n\n## Dismissed (never re-add)\n" + (
         "\n".join(f"- {d['text']}" for d in dismissed) or "(none)")
+    if noise:
+        prompt += "\n\n## Not useful (don't add things like these)\n" + "\n".join(f"- {d['text']}" for d in noise)
     found, resolved = checked(ask_claude(cfg, prompt, usage=usage), {i["id"] for i in open_ + others})
     for r in found + resolved:
         r["evidence"] = evidence(r, turns)

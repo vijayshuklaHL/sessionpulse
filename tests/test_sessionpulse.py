@@ -821,6 +821,38 @@ class FollowupTests(Fixture):
         self.assertEqual(sum(i.get("status") == "archived" for i in todos.load(self.cfg)), 1)
         self.assertEqual(todos.related(self.cfg, "work/ops"), {"work/infra"})
 
+    def test_dismiss_reasons_steer_later_followups(self):
+        followups.scan(self.cfg)
+        vendor, brand = todos.load(self.cfg)
+        with self.assertRaises(ValueError):
+            todos.apply(self.cfg, {"op": "delete", "id": vendor["id"], "reason": "meh"})
+        todos.apply(self.cfg, {"op": "delete", "id": vendor["id"], "reason": "not_useful"})
+        todos.apply(self.cfg, {"op": "delete", "id": brand["id"]})
+        gone = todos.dismissed(self.cfg)
+        self.assertEqual([(d["kind"], d.get("reason")) for d in gone], [("external", "not_useful"), ("task", None)])
+        followups.scan(self.cfg, force=True)
+        prompt = self.calls()[-1]["prompt"]
+        noise = prompt.split("## Not useful (don't add things like these)\n")[1]
+        self.assertIn(vendor["text"], noise)
+        self.assertNotIn(brand["text"], noise)
+        stats = todos.kind_stats(self.cfg)
+        self.assertEqual((stats["external"]["added"], stats["external"]["not_useful"], stats["task"]["dismissed"]),
+                         (1, 1, 1))
+
+    def test_step_waiting_on_an_open_item_goes_in_its_detail(self):
+        todos.merge_followups(self.cfg, {"id": "x", "project": "work/demo"},
+                              [{"text": "Get the SMTP login from IT", "kind": "waiting", "detail": "Test account only."}], [])
+        first = todos.load(self.cfg)[0]
+        found, _ = followups.checked({"items": [
+            {"text": "Send a test reminder to yourself", "kind": "task", "after": first["id"]},
+            {"text": "Renew the domain", "kind": "task", "after": "not-shown"}], "resolved": []}, {first["id"]})
+        self.assertNotIn("after", found[1])
+        self.assertEqual(todos.merge_followups(self.cfg, {"id": "y", "project": "work/demo"}, found, []), (1, 0))
+        self.assertEqual(todos.merge_followups(self.cfg, {"id": "z", "project": "work/demo"}, found[:1], []), (0, 0))
+        items = todos.load(self.cfg)
+        self.assertEqual(items[0]["detail"], "Test account only. Then: Send a test reminder to yourself")
+        self.assertEqual([i["text"] for i in items], ["Get the SMTP login from IT", "Renew the domain"])
+
     def test_checked_keeps_only_shown_ids(self):
         items, resolved = followups.checked({"items": "nonsense", "resolved": ["a", "b", "a", 1]}, {"a"})
         self.assertEqual((items, resolved), ([], [{"id": "a"}]))

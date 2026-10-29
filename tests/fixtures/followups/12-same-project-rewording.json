@@ -30,7 +30,7 @@
  "expect": {
   "open": [
    {"label": "Get the production SMTP credentials from Daniel", "match": [["daniel", "smtp", "mail server", "mail credential"]], "unless": ["test reminder", "test email", "send a test"]},
-   {"label": "Send a test reminder to yourself before going live", "match": [["test"], ["reminder", "email", "send"]]}
+   {"label": "Send a test reminder to yourself before going live", "match": [["test reminder", "test email", "send a test", "test message", "test send", "test to yourself", "test to your", "test real", "test sending"]]}
   ],
   "not_open": [
    {"label": "Put the clinic's address in the reminder template (done on day 3)", "match": [["address", "placeholder"]]},
