@@ -82,7 +82,8 @@ def make_handler(cfg: config.Config, tok: str):
             if url.path == "/api/data":
                 with reader.lock:
                     data = reader.snapshot(cfg)
-                data["followups"] = {"enabled": cfg.followups, **followups.status}
+                data["followups"] = {"enabled": cfg.followups, **followups.status,
+                                     "week": followups.usage_totals(cfg, 7), "failing": len(followups.failing(cfg))}
                 return self.send(200, json.dumps(data).encode(), "application/json")
             if url.path in ("/", "/index.html"):
                 return self.send(200, page, "text/html; charset=utf-8")

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Follow-ups: a session that fails to be read is retried after 1 hour, then after 6 hours, then only once its transcript grows, instead of on every round (each try used the model). A usage limit, outage or sign-out stops the round without marking any session as failing, and the dashboard shows why.
+- `sessionpulse followups status`: what follow-ups used (calls, tokens, and the cost the API would charge) today, this week and this month, and which sessions failed and why. `doctor` and the dashboard show the weekly use and the number of failing sessions.
+- Follow-ups check the model's answer more strictly: malformed items are dropped, and it can only close to-dos it was actually shown.
+- `tools/eval_followups.py` and made-up test cases measure follow-up quality; see CONTRIBUTING.md.
+
 ## 0.1.3 (2026-10-29)
 
 - Board: **On hold** and **Archived** columns. Parked items are neither open nor done; `todo list` and the open counts leave them out, and follow-ups never send archived items to Claude. Finishing a held item un-parks it.

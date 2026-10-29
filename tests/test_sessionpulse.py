@@ -525,10 +525,23 @@ import json, os, sys
 prompt = sys.stdin.read()
 with open(os.environ["FAKE_LOG"], "a") as f:
     f.write(json.dumps({"argv": sys.argv[1:], "prompt": prompt}) + "\\n")
+mode = os.environ.get("FAKE_MODE", "ok")
+if mode == "crash":
+    print("Traceback: something broke")
+    sys.exit(1)
+if mode == "limit":
+    print(json.dumps({"is_error": True, "result": "Claude AI usage limit reached|1761868800",
+                      "usage": {"input_tokens": 0, "output_tokens": 0}}))
+    sys.exit(1)
 resolved = [l.split("]")[0].split("[")[1] for l in prompt.splitlines() if l.startswith("- [") and "old item" in l]
-print(json.dumps({"is_error": False, "structured_output": {"items": [
-    {"text": "Ask the vendor for the usage breakdown", "kind": "external", "detail": "invoice is higher than our records"},
-    {"text": "Pick a brand", "kind": "bogus"}], "resolved": resolved}}))
+items = [{"text": "Ask the vendor for the usage breakdown", "kind": "external", "detail": "invoice is higher than our records"},
+         {"text": "Pick a brand", "kind": "bogus"}]
+if mode == "junk":
+    items = [5, "text", {"text": ""}, {"text": ["x"]}, {"kind": "task"}, {"text": "Call the bank", "detail": 7}]
+    resolved = resolved + ["not-shown", 3, None, os.environ.get("FAKE_EXTRA_RESOLVED")]
+print(json.dumps({"is_error": False, "total_cost_usd": 0.0025, "duration_ms": 1500,
+                  "usage": {"input_tokens": 900, "output_tokens": 60, "cache_read_input_tokens": 100},
+                  "structured_output": {"items": items, "resolved": resolved}}))
 """
 
 
@@ -545,6 +558,7 @@ class FollowupTests(Fixture):
         self.cfg.claude_command = str(fake)
         self.log = Path(self.tmp.name) / "calls.jsonl"
         os.environ["FAKE_LOG"] = str(self.log)
+        os.environ["FAKE_MODE"] = "ok"
 
     def calls(self):
         return [json.loads(l) for l in self.log.read_text().splitlines()] if self.log.exists() else []
@@ -589,6 +603,85 @@ class FollowupTests(Fixture):
 
     def test_worker_off_by_default(self):
         self.assertIsNone(followups.start_worker(self.cfg))
+
+    def test_usage_recorded_per_day_and_session(self):
+        followups.scan(self.cfg)
+        week = followups.usage_totals(self.cfg, 7)
+        self.assertEqual((week["calls"], week["tokens"], week["output_tokens"]), (1, 1060, 60))
+        self.assertAlmostEqual(week["cost_usd"], 0.0025)
+        self.assertEqual(followups.load_state(self.cfg)[SID]["tokens"], 1060)
+        followups.scan(self.cfg, force=True)
+        self.assertEqual(followups.usage_totals(self.cfg, 1)["calls"], 2)
+
+    def test_failing_session_backs_off_then_waits_for_growth(self):
+        os.environ["FAKE_MODE"] = "crash"
+        with self.assertRaises(RuntimeError):
+            followups.scan(self.cfg)
+        e = followups.load_state(self.cfg)[SID]
+        self.assertEqual(e["fails"], 1)
+        self.assertIn("something broke", e["last_error"])
+        self.assertEqual(followups.scan(self.cfg), (0, 0, 0))  # backing off: not even tried
+        self.assertEqual(len(self.calls()), 1)
+        st = followups.load_state(self.cfg)
+        st[SID]["next_try"] = "2000-01-01T00:00:00+00:00"
+        followups._save_state(self.cfg, st)
+        with self.assertRaises(RuntimeError):
+            followups.scan(self.cfg)  # due again: 2nd failure
+        st = followups.load_state(self.cfg)
+        st[SID]["next_try"] = "2000-01-01T00:00:00+00:00"
+        followups._save_state(self.cfg, st)
+        with self.assertRaises(RuntimeError):
+            followups.scan(self.cfg)  # 3rd failure: no more tries until it grows
+        e = followups.load_state(self.cfg)[SID]
+        self.assertEqual((e["fails"], "next_try" in e), (3, False))
+        self.assertEqual(followups.scan(self.cfg), (0, 0, 0))
+        self.assertEqual([s for s, _ in followups.failing(self.cfg)], [SID])
+        os.environ["FAKE_MODE"] = "ok"
+        self.assertEqual(followups.scan(self.cfg, session=SID[:8])[0], 1)  # asked for by name: tried
+        self.assertNotIn("fails", followups.load_state(self.cfg)[SID])
+        self.assertEqual(followups.failing(self.cfg), [])
+
+    def test_grown_session_is_retried_after_failing(self):
+        os.environ["FAKE_MODE"] = "crash"
+        for _ in range(3):
+            with self.assertRaises(RuntimeError):
+                followups.scan(self.cfg, force=True)
+        os.environ["FAKE_MODE"] = "ok"
+        self.assertEqual(followups.scan(self.cfg), (0, 0, 0))
+        with open(self.proj / f"{SID}.jsonl", "a") as f:
+            f.write(json.dumps(user(datetime.now().astimezone() - timedelta(hours=1), "one more thing")) + "\n")
+        self.assertEqual(followups.scan(self.cfg)[0], 1)
+
+    def test_usage_limit_blames_no_session(self):
+        os.environ["FAKE_MODE"] = "limit"
+        with self.assertRaises(followups.NotReady):
+            followups.scan(self.cfg)
+        self.assertEqual(followups.failing(self.cfg), [])
+        self.assertEqual(followups.usage_totals(self.cfg, 1)["calls"], 1)
+
+    def test_missing_claude_blames_no_session(self):
+        self.cfg.claude_command = str(Path(self.tmp.name) / "nope")
+        with unittest.mock.patch.object(followups.shutil, "which", return_value=None), \
+                unittest.mock.patch.object(followups.Path, "home", return_value=Path(self.tmp.name)):
+            with self.assertRaises(RuntimeError):
+                followups.scan(self.cfg)
+        self.assertEqual(followups.load_state(self.cfg), {})
+
+    def test_malformed_reply_is_cleaned(self):
+        todos.merge_followups(self.cfg, {"id": "x", "project": "work/demo"}, [{"text": "old item", "kind": "task"}], [])
+        todos.merge_followups(self.cfg, {"id": "y", "project": "elsewhere"}, [{"text": "far item", "kind": "task"}], [])
+        far = next(i for i in todos.load(self.cfg) if i["text"] == "far item")
+        os.environ["FAKE_MODE"] = "junk"
+        with unittest.mock.patch.dict(os.environ, {"FAKE_EXTRA_RESOLVED": far["id"]}):
+            self.assertEqual(followups.scan(self.cfg), (1, 1, 1))
+        new = next(i for i in todos.load(self.cfg) if i["text"] == "Call the bank")
+        self.assertEqual((new["kind"], new["detail"]), ("task", "7"))
+        self.assertFalse(next(i for i in todos.load(self.cfg) if i["text"] == "far item")["done_at"])
+
+    def test_checked_keeps_only_shown_ids(self):
+        items, resolved = followups.checked({"items": "nonsense", "resolved": ["a", "b", "a", 1]}, {"a"})
+        self.assertEqual((items, resolved), ([], ["a"]))
+        self.assertEqual(followups.checked({}, set()), ([], []))
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))

@@ -144,9 +144,21 @@ def cmd_doctor(cfg, args):
         fresh = a < status.INTERVAL * 3
         print(f"  {'ok ' if fresh else '-- '}  status.json {'updated' if fresh else 'stale, last updated'} "
               f"{int(a)}s ago{'' if fresh else ': is `sessionpulse daemon` running?'}")
+    bad = followups.failing(cfg)
+    if bad:
+        sid, e = bad[0]
+        print(f"  --   {len(bad)} session(s) failed when read for follow-ups; the latest error: "
+              f"{e.get('last_error')}. See `sessionpulse followups status`.")
+    week = followups.usage_totals(cfg, 7)
+    if week["calls"]:
+        print(f"  ok   follow-ups used {week['calls']} model calls, {tokens(week['tokens'])} tokens in the last 7 days")
     for w in h["warnings"]:
         line(False, w)
     return 0 if ok else 1
+
+
+def tokens(n):
+    return f"{n / 1e6:.1f}M" if n >= 1e6 else f"{n / 1e3:.0f}k" if n >= 1e3 else str(n)
 
 
 def cmd_snapshot(cfg, args):
@@ -177,7 +189,33 @@ def cmd_todo(cfg, args):
         print("Nothing here." if args.action == "list-done" else "No open to-dos.")
 
 
+def followups_status(cfg):
+    print(f"Follow-ups are {'on' if cfg.followups else 'off (add `followups = true` to config.toml)'}; "
+          f"model {cfg.followups_model}.")
+    st = followups.load_state(cfg)
+    read = [e for e in st.values() if isinstance(e, dict) and e.get("at")]
+    print(f"Sessions read: {len(read)}, adding {sum(e.get('added') or 0 for e in read)} "
+          f"and closing {sum(e.get('closed') or 0 for e in read)} to-dos.")
+    print("Model use (the cost is what the API would charge; on a subscription it counts toward your limits):")
+    for label, days in (("today", 1), ("7 days", 7), ("30 days", 30)):
+        u = followups.usage_totals(cfg, days)
+        print(f"  {label:8} {u['calls']:4} calls  {tokens(u['tokens']):>6} tokens "
+              f"({tokens(u['output_tokens'])} written)  ${u['cost_usd']:.2f}")
+    bad = followups.failing(cfg)
+    if not bad:
+        print("No session is failing.")
+        return
+    print(f"{len(bad)} session(s) failed when last read:")
+    for sid, e in bad:
+        when = f"next try after {e['next_try'][:16].replace('T', ' ')}" if e.get("next_try") else \
+            "waiting until the session grows"
+        print(f"  {sid[:8]}  {e.get('project') or '?'}: {e['fails']}x, {when}\n            {e.get('last_error')}")
+    print("Retry one now with `sessionpulse followups --session <id>`.")
+
+
 def cmd_followups(cfg, args):
+    if args.action == "status":
+        return followups_status(cfg)
     if not followups.claude_bin(cfg):
         sys.exit("error: the `claude` command was not found; set claude_command in config.toml")
     try:
@@ -244,6 +282,8 @@ def main(argv=None):
     t.add_argument("text", nargs="*", help="the to-do text (add) or item ids (done/undo/delete)")
     t.add_argument("-p", "--project", help="tag the new to-do with a project")
     f = sub.add_parser("followups", help="pick open follow-ups out of recent sessions with Claude")
+    f.add_argument("action", nargs="?", default="run", choices=["run", "status"],
+                   help="run (default), or status: model use and sessions that failed")
     f.add_argument("--days", type=int, help="look back this many days (default: followups_days)")
     f.add_argument("--session", help="only this session id (or its first characters)")
     f.add_argument("--now", action="store_true", help="include sessions that are still active")

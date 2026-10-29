@@ -20,7 +20,7 @@ import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from . import reader, todos
@@ -32,6 +32,12 @@ CLAUDE_CHARS = 2500    # per reply
 MAX_ITEMS = 12
 MAX_OPEN = 150         # open to-dos shown to the model per project
 TIMEOUT = 180
+BACKOFF = (timedelta(hours=1), timedelta(hours=6))  # wait after a session's 1st and 2nd failure;
+                                                    # after the 3rd, wait until its transcript grows
+USAGE_DAYS = 90
+# Errors that are nobody's fault in particular: no session is marked as failing for these.
+NOT_READY = re.compile(r"usage limit|limit reached|rate.?limit|overloaded|credit balance|/login|api key|"
+                       r"authenticat|network|econn|etimedout|fetch failed|\b(429|5\d\d)\b", re.I)
 
 SYSTEM = """You read a transcript of a Claude Code session between a user and Claude and list the \
 follow-ups the user still has open when the session went quiet. Reply only with the JSON the schema asks for.
@@ -70,7 +76,12 @@ SCHEMA = {
 }
 
 _state_lock = threading.Lock()
+_usage_lock = threading.Lock()
 status = {"running": False, "last_run": None, "last_error": None, "done": 0}
+
+
+class NotReady(RuntimeError):
+    """The model can't be used right now (usage limit, outage, signed out): try again later."""
 
 
 # ---------- transcript digest ----------
@@ -113,7 +124,9 @@ def claude_bin(cfg):
     return None
 
 
-def ask_claude(cfg, prompt, system=SYSTEM, schema=SCHEMA):
+def ask_claude(cfg, prompt, system=SYSTEM, schema=SCHEMA, usage=None):
+    """Run `claude -p` and return its structured output. What the call used is added to the daily
+    totals and, if given, to the `usage` dict."""
     exe = claude_bin(cfg)
     if not exe:
         raise RuntimeError("the `claude` command was not found; set claude_command in config.toml")
@@ -126,11 +139,75 @@ def ask_claude(cfg, prompt, system=SYSTEM, schema=SCHEMA):
     r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, cwd=work, env=env, timeout=TIMEOUT)
     try:
         out = json.loads(r.stdout)
+        if not isinstance(out, dict):
+            raise ValueError
     except ValueError:
-        raise RuntimeError(f"claude exited {r.returncode}: {(r.stderr or r.stdout).strip()[:300]}")
+        _fail(f"claude exited {r.returncode}: {(r.stderr or r.stdout).strip()[:300]}")
+    record_usage(cfg, out, usage)
     if out.get("is_error") or not isinstance(out.get("structured_output"), dict):
-        raise RuntimeError(f"claude returned an error: {str(out.get('result'))[:300]}")
+        _fail(f"claude returned an error: {str(out.get('result'))[:300]}")
     return out["structured_output"]
+
+
+def _fail(msg):
+    raise (NotReady if NOT_READY.search(msg) else RuntimeError)(msg)
+
+
+# ---------- model usage ----------
+USAGE_KEYS = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+
+
+def _num(v, kind=int):
+    try:
+        return max(kind(v or 0), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _usage_path(cfg):
+    return cfg.data / "followups-usage.json"
+
+
+def load_usage(cfg):
+    """Model use per day: {"2026-10-29": {"calls": 3, "input_tokens": ..., "cost_usd": ...}}."""
+    try:
+        u = json.loads(_usage_path(cfg).read_text())
+        return u if isinstance(u, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def record_usage(cfg, out, into=None):
+    u = out.get("usage") if isinstance(out.get("usage"), dict) else {}
+    run = {"calls": 1, **{k: _num(u.get(k)) for k in USAGE_KEYS},
+           "cost_usd": _num(out.get("total_cost_usd"), float), "ms": _num(out.get("duration_ms"))}
+    if into is not None:
+        for k, v in run.items():
+            into[k] = into.get(k, 0) + v
+    cfg.data.mkdir(parents=True, exist_ok=True)
+    with _usage_lock, open(cfg.data / "followups-usage.lock", "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)  # the tray's worker and the CLI may both be counting
+        days = load_usage(cfg)
+        today = days.setdefault(date.today().isoformat(), {})
+        for k, v in run.items():
+            today[k] = round(_num(today.get(k), type(v)) + v, 6)
+        days = dict(sorted(days.items())[-USAGE_DAYS:])
+        tmp = _usage_path(cfg).with_suffix(".tmp")
+        tmp.write_text(json.dumps(days, indent=1))
+        os.replace(tmp, _usage_path(cfg))
+
+
+def usage_totals(cfg, days):
+    """Model use over the last `days` days, with `tokens` = everything read and written."""
+    since = (date.today() - timedelta(days=days - 1)).isoformat()
+    tot = dict.fromkeys(("calls", *USAGE_KEYS, "ms"), 0) | {"cost_usd": 0.0}
+    for day, u in load_usage(cfg).items():
+        if day >= since and isinstance(u, dict):
+            for k in tot:
+                tot[k] += _num(u.get(k), type(tot[k]))
+    tot["tokens"] = sum(tot[k] for k in USAGE_KEYS)
+    tot["cost_usd"] = round(tot["cost_usd"], 4)
+    return tot
 
 
 # ---------- state ----------
@@ -146,6 +223,33 @@ def load_state(cfg):
         return {}
 
 
+def failing(cfg):
+    """Sessions whose last read failed: [(id, entry)], most failures first."""
+    return sorted(((sid, e) for sid, e in load_state(cfg).items() if isinstance(e, dict) and e.get("fails")),
+                  key=lambda x: -x[1]["fails"])
+
+
+def _failed(prev, sess, size, exc, now):
+    """The state entry after a failed read: back off, then wait for the transcript to grow."""
+    fails = _num(prev.get("fails")) + 1
+    e = {**prev, "project": sess.get("project"), "fails": fails, "failed_size": size,
+         "failed_at": now.isoformat(timespec="seconds"), "last_error": str(exc)[:300]}
+    e.pop("next_try", None)
+    if fails <= len(BACKOFF):
+        e["next_try"] = (now + BACKOFF[fails - 1]).isoformat(timespec="seconds")
+    return e
+
+
+def _waiting(e, size, now):
+    """True while a failed session should be left alone."""
+    if not e.get("fails") or e.get("failed_size") != size:
+        return False  # never failed, or it has grown since: worth another try
+    try:
+        return now < datetime.fromisoformat(e["next_try"])
+    except (KeyError, TypeError, ValueError):
+        return True  # out of retries until it grows
+
+
 def _save_state(cfg, st):
     cfg.data.mkdir(parents=True, exist_ok=True)
     tmp = _state_path(cfg).with_suffix(".tmp")
@@ -154,7 +258,15 @@ def _save_state(cfg, st):
 
 
 # ---------- one session ----------
-def process(cfg, sess, path):
+def checked(out, shown):
+    """The model's reply with anything malformed dropped, and `resolved` limited to ids it was shown."""
+    items = out.get("items") if isinstance(out.get("items"), list) else []
+    items = [f for f in items if isinstance(f, dict) and isinstance(f.get("text"), str) and f["text"].strip()]
+    resolved = out.get("resolved") if isinstance(out.get("resolved"), list) else []
+    return items[:MAX_ITEMS], [r for r in dict.fromkeys(resolved) if isinstance(r, str) and r in shown]
+
+
+def process(cfg, sess, path, usage=None):
     """Extract follow-ups from one session and merge them into the to-do list."""
     items = todos.load(cfg)
     project = sess.get("project") or ""
@@ -168,8 +280,8 @@ def process(cfg, sess, path):
         "\n".join(f"- [{i['id']}] {i['text']}" for i in open_) or "(none)")
     prompt += "\n\n## Dismissed (never re-add)\n" + (
         "\n".join(f"- {d['text']}" for d in dismissed) or "(none)")
-    out = ask_claude(cfg, prompt)
-    return todos.merge_followups(cfg, sess, out.get("items") or [], out.get("resolved") or [])
+    found, resolved = checked(ask_claude(cfg, prompt, usage=usage), {i["id"] for i in open_})
+    return todos.merge_followups(cfg, sess, found, resolved)
 
 
 # ---------- one-off cleanup ----------
@@ -222,7 +334,8 @@ def candidates(cfg, snap, days=None, idle_minutes=None, force=False):
             size = os.stat(s["transcript"]).st_size
         except OSError:
             continue
-        if not force and st.get(s["id"], {}).get("size") == size:
+        e = st.get(s["id"]) if isinstance(st.get(s["id"]), dict) else {}
+        if not force and (e.get("size") == size or _waiting(e, size, now)):
             continue
         out.append((s, size))
     out.sort(key=lambda x: x[0]["end"])  # oldest first, so later sessions can close earlier items
@@ -247,6 +360,8 @@ def scan(cfg, limit=None, days=None, idle_minutes=None, session=None, force=Fals
 
 
 def _scan(cfg, limit, days, idle_minutes, session, force, log):
+    if not claude_bin(cfg):  # not the sessions' fault, so don't mark them as failing
+        raise RuntimeError("the `claude` command was not found; set claude_command in config.toml")
     with reader.lock:
         snap = reader.snapshot(cfg)
     todo = candidates(cfg, snap, days, idle_minutes, force or bool(session))
@@ -256,20 +371,39 @@ def _scan(cfg, limit, days, idle_minutes, session, force, log):
         todo = todo[-limit:]
     added = closed = 0
     errors = []
+    halt = threading.Event()
 
     def one(job):
         n, (s, size) = job
+        if halt.is_set():
+            return 0, 0
+        use = {}
         try:
-            a, c = process(cfg, s, s["transcript"])
-        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            a, c = process(cfg, s, s["transcript"], use)
+        except NotReady as exc:  # a usage limit or outage: stop the round, blame no session
+            halt.set()
             errors.append(str(exc))
             if log:
-                log(f"[{n}/{len(todo)}] {s['project']}: failed, will retry next time ({str(exc)[:120]})")
+                log(f"[{n}/{len(todo)}] stopping: {str(exc)[:160]}")
+            return 0, 0
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            errors.append(str(exc))
+            with _state_lock:
+                st = load_state(cfg)
+                prev = st.get(s["id"]) if isinstance(st.get(s["id"]), dict) else {}
+                e = st[s["id"]] = _failed(prev, s, size, exc, datetime.now().astimezone())
+                _save_state(cfg, st)
+            if log:
+                when = f"next try after {e['next_try'][11:16]}" if e.get("next_try") else \
+                    "not retried until the session grows"
+                log(f"[{n}/{len(todo)}] {s['project']}: failed ({e['fails']}x, {when}): {str(exc)[:120]}")
             return 0, 0
         with _state_lock:
             st = load_state(cfg)
             st[s["id"]] = {"size": size, "at": datetime.now().astimezone().isoformat(timespec="seconds"),
-                           "added": a, "closed": c}
+                           "project": s.get("project"), "added": a, "closed": c,
+                           "tokens": sum(use.get(k, 0) for k in USAGE_KEYS),
+                           "cost_usd": round(use.get("cost_usd", 0), 6)}
             _save_state(cfg, st)
         if log:
             log(f"[{n}/{len(todo)}] {s['project']} · {s['end'][:16]} · +{a} new, {c} closed")
@@ -281,6 +415,8 @@ def _scan(cfg, limit, days, idle_minutes, session, force, log):
         for a, c in pool.map(one, enumerate(todo, 1)):
             added += a
             closed += c
+    if halt.is_set():
+        raise NotReady(errors[-1])
     if errors and len(errors) == len(todo):
         raise RuntimeError(errors[-1])
     return len(todo), added, closed

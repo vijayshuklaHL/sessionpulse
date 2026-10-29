@@ -677,7 +677,9 @@ function renderTodos() {
     ? `Follow-ups from sessions are off. Add <code>followups = true</code> to <code>~/.config/sessionpulse/config.toml</code>, or run <code>sessionpulse followups</code> once.`
     : F.last_error ? `Couldn't read sessions for follow-ups: ${esc(F.last_error)}`
     : F.running ? "Reading quiet sessions for follow-ups…"
-    : `Follow-ups are picked up from sessions after 20 quiet minutes${F.last_run ? ` · last checked ${ago(Date.parse(F.last_run))}` : ""}.`;
+    : `Follow-ups are picked up from sessions after 20 quiet minutes${F.last_run ? ` · last checked ${ago(Date.parse(F.last_run))}` : ""}`
+      + (F.week && F.week.calls ? ` · last 7 days: ${F.week.calls} model calls, ${fmtN(F.week.tokens)} tokens` : "")
+      + (F.failing ? ` · ${F.failing} session${F.failing > 1 ? "s" : ""} failed to read, see <code>sessionpulse followups status</code>` : "") + ".";
   const done = items.filter(i => i.done_at && (!r || dkey(new Date(i.done_at)) >= r))
     .sort((a, b) => b.done_at.localeCompare(a.done_at));
   const held = items.filter(i => !i.done_at && i.status === "hold").length, arch = items.filter(i => !i.done_at && i.status === "archived").length;
