@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sessionpulse"
-version = "0.1.3"
+version = "0.2.0"
 description = "A quiet instrument panel for Claude Code: live sessions, usage, and a to-do board that fills itself from your sessions. Local only."
 readme = "README.md"
 license = "MIT"

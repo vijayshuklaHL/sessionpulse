@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-30)
+
+Follow-ups you can trust. Measured with `tools/eval_followups.py` on 14 made-up cases, 3 runs each with haiku (`eval/0.2.0.json`), against 0.1.3 on the 12 cases it had (`eval/0.1.3.json`):
+
+| | 0.1.3 | 0.2.0 |
+|---|---|---|
+| Open items found | 100% | 100% |
+| Finished or listed items wrongly added | 3.9% | 0% |
+| Duplicates per session | 0.23 | 0.06, all shown as "maybe the same" |
+| Earlier items closed when done | 3/3 | 15/15, none wrongly |
+| Items with a checked quote | none | all |
+| Input tokens per session | 3,230 | 3,540 (+10%) |
 
 - Follow-ups: a session that fails to be read is retried after 1 hour, then after 6 hours, then only once its transcript grows, instead of on every round (each try used the model). A usage limit, outage or sign-out stops the round without marking any session as failing, and the dashboard shows why.
 - `sessionpulse followups status`: what follow-ups used (calls, tokens, and the cost the API would charge) today, this week and this month, and which sessions failed and why. `doctor` and the dashboard show the weekly use and the number of failing sessions.
