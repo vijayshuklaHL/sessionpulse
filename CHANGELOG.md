@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Follow-ups read a session incrementally: after the first read, only the turns added since are sent to the model, together with a short summary of the session so far, so a session that keeps growing no longer costs a full re-read each time, and a session that only grew by tool output costs nothing. `followups --again` still reads from the start.
+- A long session is read in windows from the start (at most four: the first and the newest three) instead of only its start and end, so items left open in the middle are no longer lost.
+- Each read also writes a brief of the session (goal, done, open, blocked on, next step) to `briefs.json`, for the coming session view.
+
 ## 0.2.0 (2026-10-30)
 
 Follow-ups you can trust. Measured with `tools/eval_followups.py` on 14 made-up cases, 3 runs each with haiku (`eval/0.2.0.json`), against 0.1.3 on the 12 cases it had (`eval/0.1.3.json`):

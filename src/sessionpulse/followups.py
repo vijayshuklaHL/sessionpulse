@@ -33,6 +33,8 @@ MAX_ITEMS = 12
 MAX_OPEN = 150         # open to-dos shown to the model per project
 MAX_RELATED = 60       # and from the projects linked to it
 NOT_USEFUL = 10        # recent "not useful" dismissals shown as examples of noise
+MAX_WINDOWS = 4        # a long first read is split into windows of DIGEST_CHARS; beyond this many, the middle is left out
+BRIEF_ITEMS = 5        # points per list in a session brief
 QUOTE_CHARS = 160
 EXCERPT_CHARS = 4000   # per turn, in the dashboard's transcript excerpt
 TIMEOUT = 180
@@ -73,6 +75,11 @@ in different words: if an open to-do already covers the work, leave it out. Do n
 under "dismissed". Items listed under "not useful" were dismissed by the user as noise: \
 don't add items of that sort.
 
+Also return `brief`, a short summary of the whole session so far for someone coming back to it: `goal` (one \
+sentence), `done` and `open` (up to 5 short points each), `blocked` (what it is waiting on, or empty) and `next` (the \
+next step, or empty). When you are given the earlier summary and only the newer turns, update that summary with \
+them, and list only follow-ups that the newer turns show.
+
 Turns are numbered (### #12 USER ...). For every item, set `quote` to a short passage copied exactly, word for \
 word, from one turn (max 160 characters) that shows the item is still open, preferring the user's own words, and \
 `ref` to that turn's number. Give each `resolved` to-do the same way: its id, and a `quote` and `ref` showing it \
@@ -91,8 +98,14 @@ SCHEMA = {
             "type": "object",
             "properties": {"id": {"type": "string"}, "quote": {"type": "string"}, "ref": {"type": "integer"}},
             "required": ["id"]}},
+        "brief": {"type": "object", "properties": {
+            "goal": {"type": "string"},
+            "done": {"type": "array", "maxItems": BRIEF_ITEMS, "items": {"type": "string"}},
+            "open": {"type": "array", "maxItems": BRIEF_ITEMS, "items": {"type": "string"}},
+            "blocked": {"type": "string"}, "next": {"type": "string"}},
+            "required": ["goal", "done", "open", "blocked", "next"]},
     },
-    "required": ["items", "resolved"],
+    "required": ["items", "resolved", "brief"],
 }
 
 _state_lock = threading.Lock()
@@ -126,16 +139,22 @@ def conversation(path):
     return out
 
 
+def _render(n, t):
+    """One turn as the model reads it: numbered, long ones cut in the middle. Returns (text, body)."""
+    body, cap = t["text"], USER_CHARS if t["role"] == "user" else CLAUDE_CHARS
+    if len(body) > cap:
+        body = body[:cap // 2] + "\n[…]\n" + body[-cap // 2:]
+    when = str(t["at"] or "")[:16].replace("T", " ")
+    return f"### #{n} {'USER' if t['role'] == 'user' else 'CLAUDE'} {when}\n{body}", body
+
+
 def digest(path, project="", limit=DIGEST_CHARS, turns=None):
     """The conversation as the model reads it, turns numbered #1.., trimmed to fit.
     If `turns` is a list, each numbered turn is added to it (with the text the model saw)."""
     parts = []
     for n, t in enumerate(conversation(path), 1):
-        body, cap = t["text"], USER_CHARS if t["role"] == "user" else CLAUDE_CHARS
-        if len(body) > cap:
-            body = body[:cap // 2] + "\n[…]\n" + body[-cap // 2:]
-        when = str(t["at"] or "")[:16].replace("T", " ")
-        parts.append(f"### #{n} {'USER' if t['role'] == 'user' else 'CLAUDE'} {when}\n{body}")
+        part, body = _render(n, t)
+        parts.append(part)
         if turns is not None:
             turns.append({**t, "n": n, "text": body})
     text = "\n\n".join(parts)
@@ -143,6 +162,59 @@ def digest(path, project="", limit=DIGEST_CHARS, turns=None):
         head = parts[0][:3000] if parts else ""
         text = head + "\n\n[… earlier part of the session left out …]\n\n" + text[-(limit - len(head)):]
     return f"Project: {project}\n\n{text}"
+
+
+def windows(conv, start=0, limit=DIGEST_CHARS, most=MAX_WINDOWS):
+    """The turns from `start` on, numbered, in windows that each fit `limit`:
+    [[{**turn, "n", "text", "part"}]]. With more than `most`, the first and the newest are kept."""
+    out, size = [[]], 0
+    for n, t in enumerate(conv[start:], start + 1):
+        part, body = _render(n, t)
+        if out[-1] and size + len(part) > limit:
+            out.append([])
+            size = 0
+        out[-1].append({**t, "n": n, "text": body, "part": part})
+        size += len(part) + 2
+    out = [w for w in out if w]
+    if len(out) <= most:
+        return out
+    return [out[-1]] if most == 1 else [out[0]] + out[-(most - 1):]
+
+
+# ---------- session briefs ----------
+def _briefs_path(cfg):
+    return cfg.data / "briefs.json"
+
+
+def load_briefs(cfg):
+    """Per session: {"brief": {...}, "turns": how many were read, "at", "model", "project"}."""
+    try:
+        b = json.loads(_briefs_path(cfg).read_text())
+        return b if isinstance(b, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _clean_brief(b):
+    if not isinstance(b, dict):
+        return None
+    text = lambda v, n=300: todos.redact(" ".join(str(v or "").split()))[:n]  # noqa: E731
+    points = lambda v: [text(x, 200) for x in v if isinstance(x, str) and x.strip()][:BRIEF_ITEMS] \
+        if isinstance(v, list) else []  # noqa: E731
+    out = {"goal": text(b.get("goal")), "done": points(b.get("done")), "open": points(b.get("open")),
+           "blocked": text(b.get("blocked")), "next": text(b.get("next"))}
+    return out if any(out.values()) else None
+
+
+def _save_brief(cfg, sess, brief, turns):
+    with _state_lock:
+        b = load_briefs(cfg)
+        b[sess["id"]] = {"brief": brief, "turns": turns, "project": sess.get("project"), "model": cfg.followups_model,
+                         "at": datetime.now().astimezone().isoformat(timespec="seconds")}
+        cfg.data.mkdir(parents=True, exist_ok=True)
+        tmp = _briefs_path(cfg).with_suffix(".tmp")
+        tmp.write_text(json.dumps(b, indent=1))
+        os.replace(tmp, _briefs_path(cfg))
 
 
 def _plain(text):
@@ -352,8 +424,27 @@ def checked(out, shown):
     return items[:MAX_ITEMS], resolved
 
 
-def process(cfg, sess, path, usage=None):
-    """Extract follow-ups from one session and merge them into the to-do list."""
+def process(cfg, sess, path, usage=None, fresh=False):
+    """Extract follow-ups from one session and merge them into the to-do list. Returns (added, closed).
+
+    Only the turns since the last read are sent, with the brief written then; a session read
+    for the first time (or with `fresh`) is read from the start, in windows if it is long."""
+    conv = conversation(path)
+    prev = {} if fresh else load_briefs(cfg).get(sess["id"]) or {}
+    start = prev.get("turns") if isinstance(prev.get("turns"), int) and 0 < prev["turns"] <= len(conv) else 0
+    brief = prev.get("brief") if start else None
+    added = closed = 0
+    parts = windows(conv, start)
+    for n, window in enumerate(parts, 1):
+        a, c, brief = _read(cfg, sess, window, brief, usage, more=n < len(parts))
+        added += a
+        closed += c
+        _save_brief(cfg, sess, brief, window[-1]["n"])
+    return added, closed
+
+
+def _read(cfg, sess, window, brief, usage, more=False):
+    """One model call on a window of turns (`more`: later turns follow). Returns (added, closed, brief)."""
     items = todos.load(cfg)
     project = sess.get("project") or ""
     linked = todos.related(cfg, project)
@@ -367,8 +458,17 @@ def process(cfg, sess, path, usage=None):
     gone = [d for d in todos.dismissed(cfg) if d.get("project") == project]
     dismissed = gone[-40:]
     noise = [d for d in gone if d.get("reason") == "not_useful"][-NOT_USEFUL:]
-    turns = []
-    prompt = digest(path, project, turns=turns)
+    prompt = f"Project: {project}\n\n"
+    if brief:
+        prompt += ("## Earlier in this session (your summary from then; the turns before "
+                   f"#{window[0]['n']} are not repeated)\n{json.dumps(brief, ensure_ascii=False)}\n\n"
+                   f"## Newer turns\n\n")
+    elif window[0]["n"] > 1:
+        prompt += f"[… turns #1 to #{window[0]['n'] - 1} left out …]\n\n"
+    prompt += "\n\n".join(t["part"] for t in window)
+    if more:
+        prompt += ("\n\n[… the session goes on after this; you will see the rest next. Don't list the work that is "
+                   "simply in progress here, only what is clearly left for later …]")
     prompt += "\n\n## Open to-dos for this project\n" + (
         "\n".join(f"- [{i['id']}] {i['text']}" for i in open_) or "(none)")
     if others:
@@ -378,10 +478,11 @@ def process(cfg, sess, path, usage=None):
         "\n".join(f"- {d['text']}" for d in dismissed) or "(none)")
     if noise:
         prompt += "\n\n## Not useful (don't add things like these)\n" + "\n".join(f"- {d['text']}" for d in noise)
-    found, resolved = checked(ask_claude(cfg, prompt, usage=usage), {i["id"] for i in open_ + others})
+    out = ask_claude(cfg, prompt, usage=usage)
+    found, resolved = checked(out, {i["id"] for i in open_ + others})
     for r in found + resolved:
-        r["evidence"] = evidence(r, turns)
-    return todos.merge_followups(cfg, sess, found, resolved)
+        r["evidence"] = evidence(r, window)
+    return (*todos.merge_followups(cfg, sess, found, resolved), _clean_brief(out.get("brief")) or brief)
 
 
 # ---------- one-off cleanup ----------
@@ -532,7 +633,7 @@ def _scan(cfg, limit, days, idle_minutes, session, force, log):
             return 0, 0
         use = {}
         try:
-            a, c = process(cfg, s, s["transcript"], use)
+            a, c = process(cfg, s, s["transcript"], use, fresh=force)
         except NotReady as exc:  # a usage limit or outage: stop the round, blame no session
             halt.set()
             errors.append(str(exc))

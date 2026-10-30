@@ -2,10 +2,11 @@
 """Measure how well follow-ups work, on made-up transcripts.
 
 Each case in tests/fixtures/followups/ is a short spec: one or more sessions
-(turns of user and Claude text, plus broken lines, tool results, subagent turns
-or filler), to-dos already on the list, and what should come out. This script
-writes the sessions as Claude Code transcripts in a throwaway directory, runs
-the real followups.process() on them with `claude -p`, and scores the result:
+(turns of user and Claude text, plus broken lines, tool results, subagent turns,
+filler, or more turns for an earlier session: {"continues": n}), to-dos already on
+the list, and what should come out. This script writes the sessions as Claude
+Code transcripts in a throwaway directory, runs the real followups.process() on
+them with `claude -p`, and scores the result:
 
   recall        expected open items that were found
   hard          the same, for items the current design is known to miss
@@ -77,15 +78,21 @@ def _entry(sid, cwd, t, typ, content, **kw):
                                               "content": content}, **kw}
 
 
-def build(name, spec, claude_dir):
-    """Write the case's sessions as transcripts; return [(session dict, path)]."""
+def build(name, spec, claude_dir, each=None):
+    """Write the case's sessions as transcripts; return [(session dict, path)]. `each(session, path)`
+    is called after each one is written, so a grown session can be read before it grows."""
     out = []
     for n, s in enumerate(spec["sessions"]):
-        sid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"sessionpulse-eval/{name}/{n}"))
-        cwd = f"/home/demo/{s['project']}"
-        path = claude_dir / "projects" / re.sub(r"[^A-Za-z0-9]", "-", cwd) / f"{sid}.jsonl"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        t = START + timedelta(days=n)
+        if "continues" in s:  # the same session, grown: more turns appended to an earlier one's transcript
+            base, path = out[s["continues"]]
+            sid, cwd, s = base["id"], base["cwd"], {**s, "project": base["project"]}
+            t = datetime.fromisoformat(base["end"]) + timedelta(hours=3)
+        else:
+            sid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"sessionpulse-eval/{name}/{n}"))
+            cwd = f"/home/demo/{s['project']}"
+            path = claude_dir / "projects" / re.sub(r"[^A-Za-z0-9]", "-", cwd) / f"{sid}.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            t = START + timedelta(days=n)
         turns = []
         for turn in s["turns"]:
             turns += filler_turns(turn["filler"]) if isinstance(turn, dict) and "filler" in turn else [turn]
@@ -104,9 +111,12 @@ def build(name, spec, claude_dir):
             elif "sidechain" in turn:
                 lines.append(json.dumps(_entry(sid, cwd, t, "assistant", [
                     {"type": "text", "text": turn["sidechain"][1]}], isSidechain=True)))
-        path.write_text("\n".join(lines) + "\n")
+        with open(path, "a") as f:
+            f.write("\n".join(lines) + "\n")
         out.append(({"id": sid, "project": s["project"], "cwd": cwd, "end": t.isoformat(timespec="seconds")},
                     path))
+        if each:
+            each(*out[-1])
     return out
 
 
@@ -214,11 +224,13 @@ def run_case(name, spec, model, claude_command=""):
             todos._save(cfg, seed)
         for a, b in spec.get("related", ()):  # projects linked by an earlier merge
             todos._link(cfg, "related", a, b)
-        for sess, path in build(name, spec, cfg.claude):
+        def read(sess, path):
             try:
                 followups.process(cfg, sess, path)
             except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
                 errors.append(str(exc)[:300])
+
+        build(name, spec, cfg.claude, each=read)
         final = todos.load(cfg)
     seeded = {i["id"] for i in seed}
     added = [i for i in final if i["id"] not in seeded]

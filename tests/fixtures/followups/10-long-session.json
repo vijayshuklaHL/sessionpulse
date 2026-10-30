@@ -1,5 +1,5 @@
 {
- "about": "A long session that is trimmed to fit (60,000 characters). One open item sits in the middle, which the trim cuts out; one is at the end.",
+ "about": "A long session, longer than one 60,000-character window. One open item sits in the middle (0.2.0 and earlier cut it out; it is now read in windows); one is at the end.",
  "sessions": [{"project": "work/log-pipeline", "turns": [
   ["user", "Let's work through the log pipeline backlog today, starting with the parser."],
   {"filler": 14},
@@ -12,7 +12,7 @@
  "expect": {
   "open": [
    {"label": "Add alerting when ingest lag is over 5 minutes", "match": [["alert"], ["lag", "ingest"]]},
-   {"label": "Ask the hosting provider to raise the log storage quota (middle of a long session)", "match": [["quota", "storage"]], "hard": true}
+   {"label": "Ask the hosting provider to raise the log storage quota (middle of a long session)", "match": [["quota", "storage"]]}
   ],
   "not_open": [
    {"label": "Retry logic (done)", "match": [["retry"]]}

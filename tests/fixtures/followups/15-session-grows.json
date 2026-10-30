@@ -1,0 +1,27 @@
+{
+ "about": "One session read twice: it goes quiet with two items open, then is picked up again and finishes one and opens another. The second read only gets the new turns and the earlier brief.",
+ "sessions": [
+  {"project": "work/garden-planner", "turns": [
+   ["user", "Let's add frost dates to the planting calendar."],
+   ["claude", "Added a frost-date table per region in `data/frost.csv` and the calendar now greys out days before the last frost. The data for the coastal regions is a guess: I used the nearest inland station."],
+   ["user", "I'll ask Hanna at the allotment society for the real coastal frost dates. And I still need to decide whether the calendar starts in January or March."],
+   ["claude", "Noted: Hanna for the coastal frost dates, and the calendar start month is your call."]
+  ]},
+  {"continues": 0, "turns": [
+   ["user", "Back. I decided: the calendar starts in March."],
+   ["claude", "Changed the default start month to March and moved the January to February sowing tips into a 'before the season' box at the top."],
+   ["user", "Good. Now the seed shop wants a printable version, I need to send them a PDF sample by Friday."],
+   ["claude", "I added a print stylesheet; `make pdf` writes `calendar.pdf`. You can send that to the seed shop."]
+  ]}
+ ],
+ "expect": {
+  "open": [
+   {"label": "Ask Hanna for the coastal frost dates", "match": [["hanna", "coastal"]]},
+   {"label": "Send the seed shop a PDF sample by Friday", "match": [["seed shop", "pdf", "printable"]]}
+  ],
+  "not_open": [
+   {"label": "Decide the calendar start month (decided: March)", "match": [["start", "month", "january", "march"]], "unless": ["pdf", "seed"]},
+   {"label": "Add frost dates (done)", "match": [["add frost", "frost-date table"]]}
+  ]
+ }
+}

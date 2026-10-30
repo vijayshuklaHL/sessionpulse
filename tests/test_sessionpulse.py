@@ -624,9 +624,11 @@ if mode == "across":
 if mode == "junk":
     items = [5, "text", {"text": ""}, {"text": ["x"]}, {"kind": "task"}, {"text": "Call the bank", "detail": 7}]
     resolved = resolved + ["not-shown", 3, None, os.environ.get("FAKE_EXTRA_RESOLVED")]
+brief = {"goal": "Draft the vendor message", "done": ["drafted it"], "open": ["ask the vendor"],
+         "blocked": "", "next": "send it"}
 print(json.dumps({"is_error": False, "total_cost_usd": 0.0025, "duration_ms": 1500,
                   "usage": {"input_tokens": 900, "output_tokens": 60, "cache_read_input_tokens": 100},
-                  "structured_output": {"items": items, "resolved": resolved}}))
+                  "structured_output": {"items": items, "resolved": resolved, "brief": brief}}))
 """
 
 
@@ -907,6 +909,42 @@ class FollowupTests(Fixture):
         self.assertEqual(items[0]["detail"], "Test account only. Then: Send a test reminder to yourself")
         self.assertEqual([i["text"] for i in items], ["Get the SMTP login from IT", "Renew the domain"])
 
+    def test_grown_session_sends_only_new_turns_with_the_brief(self):
+        old = datetime.now().astimezone() - timedelta(hours=2)
+        first = [user(old, "draft the vendor message"), assistant(old, "m1", 5),
+                 entry(old, "assistant", message={"id": "m2", "role": "assistant", "model": "claude-test-1",
+                       "content": [{"type": "text", "text": "Still open: ask the vendor."}]})]
+        followups.scan(self.cfg)
+        b = followups.load_briefs(self.cfg)[SID]
+        self.assertEqual((b["turns"], b["brief"]["next"]), (3, "send it"))
+        self.write(first + [assistant(old, "m3", 5, tool=True)])  # only tool use: nothing new to read
+        self.assertEqual(followups.scan(self.cfg)[0], 1)
+        self.assertEqual(len(self.calls()), 1)
+        self.write(first + [user(old, "the vendor replied, now book the call")])
+        followups.scan(self.cfg)
+        prompt = self.calls()[-1]["prompt"]
+        self.assertIn("## Earlier in this session", prompt)
+        self.assertIn('"next": "send it"', prompt)
+        self.assertIn("### #4 USER", prompt)
+        self.assertNotIn("draft the vendor message", prompt)
+        self.assertEqual(followups.load_briefs(self.cfg)[SID]["turns"], 4)
+        followups.scan(self.cfg, force=True)  # --again: from the start
+        self.assertIn("draft the vendor message", self.calls()[-1]["prompt"])
+        self.assertNotIn("## Earlier in this session", self.calls()[-1]["prompt"])
+
+    def test_long_first_read_goes_in_windows(self):
+        conv = [{"uuid": str(n), "at": None, "role": "user", "text": f"turn {n} " + "x" * 900} for n in range(40)]
+        w = followups.windows(conv, limit=5000)
+        self.assertEqual([t["n"] for t in w[0]][:2], [1, 2])
+        self.assertTrue(all(sum(len(t["part"]) for t in x) <= 5000 for x in w))
+        self.assertEqual(w[-1][-1]["n"], 40)
+        capped = followups.windows(conv, limit=5000, most=3)
+        self.assertEqual(len(capped), 3)
+        self.assertEqual((capped[0][0]["n"], capped[-1][-1]["n"]), (1, 40))
+        self.assertEqual([w[0]["n"] for w in followups.windows(conv, limit=5000, most=1)], [capped[-1][0]["n"]])
+        self.assertEqual(followups.windows(conv, start=40), [])
+        self.assertEqual(followups.windows(conv, start=38)[0][0]["n"], 39)
+
     def test_checked_keeps_only_shown_ids(self):
         items, resolved = followups.checked({"items": "nonsense", "resolved": ["a", "b", "a", 1]}, {"a"})
         self.assertEqual((items, resolved), ([], [{"id": "a"}]))
@@ -986,7 +1024,9 @@ class EvalTests(unittest.TestCase):
         sess, path = eval_followups.build("10", self.cases["10-long-session"], self.root)[0]
         d = followups.digest(path, sess["project"])
         self.assertIn("ingest lag", d)
-        self.assertNotIn("quota", d)  # trimmed away: why this item is marked hard
+        self.assertNotIn("quota", d)  # a one-shot digest cuts the middle (how 0.2.0 and earlier lost it)
+        read = "\n".join(t["part"] for w in followups.windows(followups.conversation(path)) for t in w)
+        self.assertIn("quota", read)
 
     def test_run_case_with_fake_claude(self):
         fake = self.root / "fake-claude"
