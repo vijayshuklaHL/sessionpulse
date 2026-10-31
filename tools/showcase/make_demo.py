@@ -90,6 +90,36 @@ DONE = [
     ("work/billing-service", "checklist", "Reconcile September invoices with the Stripe export", True),
     ("work/docs-site", "decision", "Choose the docs theme", False),
 ]
+# What each project's latest sessions were about (briefs.json, shown in History and on Live cards)
+BRIEFS = {
+    "work/orders-api": {"goal": "Rate-limit the orders endpoint and move order events to the queue",
+                        "done": ["Token-bucket limiter behind a flag", "Load test at 100 and 300 requests per minute",
+                                 "Order events published to the queue on the branch"],
+                        "open": ["Pick the limit", "Payments team sign-off on refund_reason"],
+                        "blocked": "The payments team has to approve the refund_reason column",
+                        "next": "Pick the rate limit, then turn the flag on in staging"},
+    "work/infra-terraform": {"goal": "Move staging to the new VPC without downtime",
+                             "done": ["Plan reviewed", "Peering between the old and new VPC"],
+                             "open": ["Quota for 4 more NAT gateways", "Maintenance window"],
+                             "blocked": "Waiting on the cloud provider's quota increase",
+                             "next": "Book the maintenance window once the quota is approved"},
+    "work/mobile-app": {"goal": "Fix the empty-cart crash on iOS and plan offline mode",
+                        "done": ["Crash fixed and shipped in TestFlight build 214"],
+                        "open": ["Beta testers' crash reports", "Image caching decision"],
+                        "blocked": "", "next": "Read the beta crash reports tomorrow morning"},
+    "work/billing-service": {"goal": "Add EU tax handling to invoices",
+                             "done": ["Tax rules per country", "Reconciliation against the Stripe export"],
+                             "open": ["Rounding rule for multi-currency invoices"],
+                             "blocked": "The accountant has to sign off the EU rules",
+                             "next": "Send the summary to the accountant"},
+    "work/docs-site": {"goal": "Rewrite the getting-started guide", "done": ["New outline", "First three sections"],
+                       "open": ["Two code samples use the old client"], "blocked": "",
+                       "next": "Fix the two samples, then publish the API reference preview"},
+    "work/data-pipeline": {"goal": "Backfill September events and speed up the revenue job",
+                           "done": ["Backfill finished", "Daily job now ends by 6:00"],
+                           "open": ["Finance to confirm September totals"], "blocked": "",
+                           "next": "Tell the analytics channel about the earlier finish"},
+}
 MANUAL = [("Prepare slides for Thursday's demo", None), ("1:1 notes for Friday", None)]
 REPLIES = ["Done. The change is on the branch and the tests pass.",
            "I found the cause: the test depends on wall-clock time. I made it use a fixed clock.",
@@ -137,7 +167,26 @@ def write_session(proj, start, minutes, prompts, model, sid=None, live=False):
     with open(pdir / f"{sid}.jsonl", "w") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    return {"id": sid, "project": proj, "cwd": cwd, "end": rows[-1]["timestamp"], "start": rows[0]["timestamp"]}
+    return {"id": sid, "project": proj, "cwd": cwd, "end": rows[-1]["timestamp"], "start": rows[0]["timestamp"],
+            "file": pdir / f"{sid}.jsonl", "model": model}
+
+
+def say(s, ask, reply):
+    """Append a prompt and a reply to a session; returns the reply's evidence (what Why? shows)."""
+    t = datetime.fromisoformat(s["end"])
+    rows = [{"type": "user", "uuid": str(uuid.uuid4()), "timestamp": iso(t), "cwd": s["cwd"], "sessionId": s["id"],
+             "message": {"role": "user", "content": ask}},
+            {"type": "assistant", "uuid": str(uuid.uuid4()), "timestamp": iso(t + timedelta(seconds=40)),
+             "cwd": s["cwd"], "sessionId": s["id"],
+             "message": {"id": f"msg_{uuid.uuid4().hex[:12]}", "role": "assistant", "model": s["model"],
+                         "content": [{"type": "text", "text": reply}],
+                         "usage": {"input_tokens": 9, "output_tokens": 420, "cache_creation_input_tokens": 2100,
+                                   "cache_read_input_tokens": 61000}}}]
+    with open(s["file"], "a") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    return {"quote": reply.split(". ")[0].rstrip("."), "uuid": rows[1]["uuid"], "at": rows[1]["timestamp"],
+            "role": "assistant"}
 
 
 def main():
@@ -198,7 +247,7 @@ def main():
             "pid": p.pid, "sessionId": sid, "status": status, "kind": "interactive", "entrypoint": "cli",
             "startedAt": started, "statusUpdatedAt": int(NOW.timestamp() * 1000) - random.randint(5, 200) * 1000}))
         events.append({"ts": s["start"], "event": "SessionStart", "session": sid, "cwd": s["cwd"], "reason": "startup"})
-        live.append({"pid": p.pid, "sid": sid, "project": proj})
+        live.append({"pid": p.pid, "sid": sid, "project": proj, "s": s})
     events.sort(key=lambda e: e["ts"])
     with open(data / "events.jsonl", "w") as f:
         for e in events:
@@ -207,12 +256,14 @@ def main():
     by_proj = {}
     for s in sessions:
         by_proj.setdefault(s["project"], []).append(s)
+    for l in live:
+        by_proj[l["project"]].append(l["s"])
     todos, hold = [], []
     for i, (proj, kind, text, detail) in enumerate(FOLLOWUPS):
         s = random.choice(by_proj[proj][-4:])
         item = {"id": f"d{i:03x}", "text": text, "project": proj, "created": s["end"], "done_at": None,
                 "source": "session", "kind": kind, "detail": detail, "session": s["id"], "cwd": s["cwd"],
-                "session_at": s["end"]}
+                "session_at": s["end"], "evidence": say(s, "What's still open before we stop?", detail)}
         # three items arrive on camera (the recorder adds them), the rest are already there
         (hold if proj == "work/orders-api" and kind != "task" else todos).append(item)
     todos[3]["doing"] = True
@@ -224,13 +275,34 @@ def main():
                 "session_at": s["start"]}
         if auto:
             item["closed_by"] = s["id"]
+            item["closed_evidence"] = say(s, "Is that finished?", f"{text}: done and checked. Nothing else is left for it.")
         todos.append(item)
+    # parked items, and one that looks like an open item in another project
+    find = lambda start: next(i for i in todos if i["text"].startswith(start))  # noqa: E731
+    find("Decide whether to keep the old revenue job")["status"] = "hold"
+    find("Publish the generated API reference")["status"] = "archived"
+    twin = next(i for i in todos if i["text"].startswith("Confirm last night's backup"))
+    s = by_proj["work/data-pipeline"][-1]
+    todos.append({"id": "d0ff", "text": "Check that the nightly backup restores cleanly", "project": "work/data-pipeline",
+                  "created": s["end"], "done_at": None, "source": "session", "kind": "checklist",
+                  "detail": "The events table is in the same backup.", "session": s["id"], "cwd": s["cwd"],
+                  "session_at": s["end"], "possible_duplicate_of": twin["id"],
+                  "evidence": say(s, "Anything else?", "Check that the nightly backup restores cleanly. "
+                                                       "The events table is in the same backup.")})
+    briefs, seen = {}, set()
+    for s in sorted(sessions + [l["s"] for l in live], key=lambda s: s["end"], reverse=True):
+        if s["project"] in seen and len(briefs) >= 8:
+            continue
+        seen.add(s["project"])
+        briefs[s["id"]] = {"brief": BRIEFS[s["project"]], "turns": random.randint(12, 140), "project": s["project"],
+                           "model": "haiku", "at": s["end"]}
+    (data / "briefs.json").write_text(json.dumps(briefs, indent=1))
     for k, (text, proj) in enumerate(MANUAL):
         todos.append({"id": f"m{k:03x}", "text": text, "project": proj,
                       "created": iso(NOW - timedelta(hours=20 + k)), "done_at": None})
     (data / "todos.json").write_text(json.dumps(todos, indent=1))
     (DEMO / "arrivals.json").write_text(json.dumps(hold, indent=1))
-    (DEMO / "live.json").write_text(json.dumps(live, indent=1))
+    (DEMO / "live.json").write_text(json.dumps([{k: v for k, v in l.items() if k != "s"} for l in live], indent=1))
     print(f"{len(sessions) + len(live)} sessions, {len(todos)} to-dos, {len(hold)} arriving on camera, "
           f"live pids {[l['pid'] for l in live]}")
 

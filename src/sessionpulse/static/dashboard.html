@@ -115,6 +115,11 @@ td.proj { white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow
 .detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 4px 0; }
 .detail dt { color: var(--text-muted); }
 .detail dd { margin: 0; word-break: break-word; }
+.detail dl { position: sticky; left: 8px; max-width: min(100%, calc(100vw - 100px)); }
+.detail dt.sep { grid-column: 1 / -1; border-top: 1px solid var(--border); margin: 6px 0 2px; }
+@media (max-width: 640px) {
+  #history tr > :nth-child(3), #history tr > :nth-child(7), #history tr > :nth-child(8), #history tr > :nth-child(9) { display: none; }
+}
 .detail dd ul { margin: 0; padding-left: 16px; }
 .detail .fu li { list-style: none; margin-left: -16px; }
 .detail .fu .st { color: var(--text-muted); margin-left: 6px; }
@@ -148,7 +153,7 @@ input[type=search] { flex: 1; min-width: 200px; }
 .pgroup > summary::before { content: "▸"; color: var(--text-muted); font-size: 11px; width: 10px; }
 .pgroup[open] > summary::before { content: "▾"; }
 .pgroup > summary .n { font-weight: 400; color: var(--text-muted); font-size: 12px; }
-.pgroup > summary .kinds { display: flex; gap: 4px; margin-left: 4px; }
+.pgroup > summary .kinds { display: flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; }
 .pgroup > summary .kinds .kindtag { margin: 0; }
 .pgroup > ul { list-style: none; margin: 0 0 6px; padding: 0 0 0 16px; }
 .dismiss-all { margin-left: auto; font: inherit; font-size: 11px; font-weight: 400; border: 1px solid var(--border);
@@ -184,7 +189,7 @@ input[type=search] { flex: 1; min-width: 200px; }
   border-radius: 5px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; white-space: nowrap; }
 /* One color per category, shared by tags, dots, board columns and card stripes. */
 .k-decision { --c: var(--crit); } .k-external { --c: var(--busy); } .k-waiting { --c: var(--series-7); }
-.k-checklist { --c: var(--accent); } .k-task { --c: var(--series-5); } .k-mine, .k-todo { --c: var(--other); }
+.k-checklist { --c: var(--accent); } .k-task { --c: var(--series-3); } .k-mine, .k-todo { --c: var(--other); }
 .k-doing { --c: var(--accent); } .k-done { --c: var(--good); }
 .k-hold { --c: var(--series-4); } .k-archived { --c: var(--other); }
 .kindtag { color: color-mix(in srgb, var(--c) 78%, var(--text-primary));
@@ -255,6 +260,10 @@ a:hover { text-decoration: underline; }
 .card2 .copy, .card2 .why-btn, .card2 select { white-space: nowrap; margin-left: 0; }
 .card2 select { font: inherit; font-size: 11px; padding: 1px 4px; border-radius: 5px; border: 1px solid var(--border);
   background: var(--surface-1); color: var(--text-secondary); }
+.card2 { position: relative; }
+.card2 > .x { position: absolute; top: 8px; right: 6px; }
+.card2 > .t { padding-right: 16px; }
+.card2 > .dismiss-why { margin-top: 7px; }
 .card2 .x { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
 .card2 .x:hover { color: var(--crit); }
 .col-empty { font-size: 12px; color: var(--text-muted); padding: 10px 4px; text-align: center; }
@@ -263,7 +272,8 @@ a:hover { text-decoration: underline; }
 .why-box { background: var(--surface-1); color: var(--text-primary); width: min(560px, 100%); height: 100%; overflow-y: auto;
   padding: 18px 20px 28px; border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgb(0 0 0 / .15); }
 .why-head { display: flex; gap: 10px; align-items: flex-start; }
-.why-head h2 { font-size: 16px; margin: 0; flex: 1; overflow-wrap: anywhere; }
+.why-head h2 { font-size: 16px; margin: 0; flex: 1; overflow-wrap: anywhere; text-transform: none; letter-spacing: 0; line-height: 1.35; }
+.why code, .detail code { word-break: break-all; }
 .why-close { border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 2px; }
 .why h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: 18px 0 6px; }
 .why p { margin: 6px 0; font-size: 13px; overflow-wrap: anywhere; }
@@ -274,6 +284,7 @@ a:hover { text-decoration: underline; }
 .why-quote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 6px 6px 0; }
 .why-quote blockquote { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
 .why-quote figcaption { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.todo .dismiss-why { grid-column: 2 / -1; }
 .dismiss-why { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; color: var(--text-muted); }
 .dismiss-why button { font: inherit; font-size: 11px; border: 1px solid var(--border); background: var(--surface-1);
   color: var(--text-secondary); border-radius: 5px; padding: 1px 6px; cursor: pointer; }
@@ -700,9 +711,10 @@ function renderHistory(sessions) {
       const u = s.usage, exit = s.state === "exited"
         ? `${esc(REASONS[s.exit_reason] || s.exit_reason)} at ${fmtD(s.exit_at)}`
         : s.state === "closed" ? "No exit event recorded (closed before the exit hook existed, or the terminal was killed)" : "Still running";
-      html += `<tr class="detail"><td colspan="9"><dl>${briefRows(s)}
-        <dt>Session</dt><dd><code>${s.id}</code></dd>
+      const brief = briefRows(s);
+      html += `<tr class="detail"><td colspan="9"><dl>${brief}${brief ? `<dt class="sep" aria-hidden="true"></dt>` : ""}
         <dt>Resume</dt><dd><code>cd ${esc(s.cwd)} &amp;&amp; claude --resume ${s.id}</code><button class="copy" data-copy="cd ${esc(s.cwd)} && claude --resume ${s.id}">Copy</button></dd>
+        <dt>Session</dt><dd><code>${s.id}</code></dd>
         <dt>Directory</dt><dd>${esc(s.cwd)}</dd>
         <dt>Exit</dt><dd>${exit}</dd>
         <dt>Model</dt><dd>${esc(shortModel(s.model))}${s.version ? " · Claude Code " + esc(s.version) : ""}</dd>
@@ -799,7 +811,7 @@ function renderTodos() {
     const kinds = {}; g.forEach(i => { if (i.kind) kinds[i.kind] = (kinds[i.kind]||0) + 1; });
     return `<li><details class="pgroup" data-p="${esc(p)}" ${isOpen ? "open" : ""}><summary>${esc(p || "No project")}
       <span class="n">${g.length} · ${esc(ago(Date.parse(newest(g))))}</span>
-      <span class="kinds">${Object.entries(kinds).map(([k, n]) => `<span class="kindtag k-${esc(k)}" title="${esc(KIND[k] || k)}">${n}</span>`).join("")}</span>
+      <span class="kinds">${Object.entries(kinds).map(([k, n]) => `<span class="kindtag k-${esc(k)}">${n} ${esc(KIND[k] || k)}</span>`).join("")}</span>
       <button class="dismiss-all" data-ids="${esc(g.map(i => i.id).join(","))}" title="Remove every open item in this group">Dismiss all</button></summary>
       <ul>${g.slice().sort((a, b) => (b.session_at || b.created).localeCompare(a.session_at || a.created)).map(i => todoRow(i, false, true)).join("")}</ul></details></li>`;
   }).join("")
@@ -901,16 +913,16 @@ function moveOp(i, col) {
 }
 const card = i => {
   const born = i.session_at || i.created, cols = COLS[BY], here = colOf(i), parked = PARKED.includes(here);
+  const asking = i.source === "session" && DISMISSING === i.id;
   return `<div class="card2 k-${esc(i.kind || "mine")}${i.doing && here !== "done" && !parked ? " doing" : ""}${i.done_at ? " done" : ""}${parked ? " parked" : ""}" draggable="true" data-id="${esc(i.id)}">
-    <div class="t">${(BY === "status" || parked) && i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind])}</span>` : ""}${esc(i.text)}</div>
+    ${asking ? "" : delBtn(i)}<div class="t">${(BY === "status" || parked) && i.kind ? `<span class="kindtag k-${esc(i.kind)}">${esc(KIND[i.kind])}</span>` : ""}${esc(i.text)}</div>
     ${i.detail ? `<div class="d" title="Click to expand">${esc(i.detail)}</div>` : ""}${PARKED.includes(colOf(i)) ? "" : dupNote(i)}
     <div class="meta">${i.doing && !i.done_at && !parked && BY === "kind" ? `<span class="doing-pill">Doing</span>` : ""}${i.project ? `<span class="tag" title="${esc(i.project)}">${esc(i.project.split("/").pop())}</span>` : ""}
       <span title="${i.done_at ? "Done " + esc(fmtD(i.done_at)) : (i.session_at ? "Discussed " : "Added ") + esc(fmtD(born))}">${i.done_at ? "done " + ago(Date.parse(i.done_at)) : ago(Date.parse(born))}</span>
       ${i.closed_by && i.done_at ? `<span title="A later session showed this was done">· auto</span>` : ""}
       <span class="acts">${i.source === "session" && i.session ? `<button class="why-btn" data-why="${esc(i.id)}" title="${i.closed_by && i.done_at ? "What closed it" : "Where this came from"}">Why?</button>` : ""}${i.session && !i.done_at && !parked ? `<button class="copy" data-copy="cd ${esc(i.cwd || "")} && claude --resume ${esc(i.session)}" title="Copy the command that reopens the session this came from">Resume</button>` : ""}
-        <select data-move="${esc(i.id)}" aria-label="Move to"><option value="">Move…</option>${cols.filter(c => c[0] !== here).map(c => `<option value="${c[0]}">${c[1]}</option>`).join("")}</select>
-        ${delBtn(i)}</span>
-    </div></div>`;
+        <select data-move="${esc(i.id)}" aria-label="Move to"><option value="">Move…</option>${cols.filter(c => c[0] !== here).map(c => `<option value="${c[0]}">${c[1]}</option>`).join("")}</select></span>
+    </div>${asking ? delBtn(i) : ""}</div>`;
 };
 
 function renderBoard() {
