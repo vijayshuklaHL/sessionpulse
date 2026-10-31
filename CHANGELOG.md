@@ -4,7 +4,8 @@
 
 - Follow-ups read a session incrementally: after the first read, only the turns added since are sent to the model, together with a short summary of the session so far, so a session that keeps growing no longer costs a full re-read each time, and a session that only grew by tool output costs nothing. `followups --again` still reads from the start.
 - A long session is read in windows from the start (at most four: the first and the newest three) instead of only its start and end, so items left open in the middle are no longer lost.
-- Each read also writes a brief of the session (goal, done, open, blocked on, next step) to `briefs.json`, for the coming session view.
+- Each read also writes a brief of the session (goal, done, open, blocked on, next step) to `briefs.json`.
+- The session detail in History shows that brief, the follow-ups the session left (with their state and **Why?**) and the ones it closed elsewhere. A Live card shows the next step and how many follow-ups are open. History's search also matches the goal.
 
 ## 0.2.0 (2026-10-30)
 

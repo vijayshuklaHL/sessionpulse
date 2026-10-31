@@ -85,6 +85,8 @@ def make_handler(cfg: config.Config, tok: str):
                     data = reader.snapshot(cfg)
                 data["followups"] = {"enabled": cfg.followups, **followups.status,
                                      "week": followups.usage_totals(cfg, 7), "failing": len(followups.failing(cfg))}
+                ids = {s["id"] for s in data["sessions"]}
+                data["briefs"] = {k: v for k, v in followups.load_briefs(cfg).items() if k in ids}
                 return self.send(200, json.dumps(data).encode(), "application/json")
             if url.path == "/api/excerpt":
                 return self.excerpt(parse_qs(url.query))

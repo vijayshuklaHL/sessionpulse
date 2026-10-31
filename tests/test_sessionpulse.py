@@ -288,6 +288,15 @@ class ServerTests(Fixture):
         self.assertEqual(self.get("/api/export?format=exe", cookie)[0], 400)
         self.assertEqual(self.get("/api/export")[0], 403)
 
+    def test_data_carries_briefs_of_known_sessions(self):
+        brief = {"goal": "Ship the recipe site", "done": [], "open": [], "blocked": "", "next": "Deploy"}
+        followups._save_brief(self.cfg, {"id": SID, "project": "p"}, brief, 4)
+        followups._save_brief(self.cfg, {"id": "gone", "project": "p"}, brief, 2)
+        cookie = self.get(f"/?token={config.token(self.cfg)}")[1]["Set-Cookie"].split(";")[0]
+        briefs = json.loads(self.get("/api/data", {"Cookie": cookie})[2])["briefs"]
+        self.assertEqual(list(briefs), [SID])
+        self.assertEqual((briefs[SID]["brief"]["next"], briefs[SID]["turns"]), ("Deploy", 4))
+
     def test_excerpt_shows_turns_around_one(self):
         rows = [user(self.t0, f"prompt {n}") | {"uuid": f"u{n}"} for n in range(6)]
         rows[3]["message"]["content"] = "my DB_PASSWORD=hunter2 is set"

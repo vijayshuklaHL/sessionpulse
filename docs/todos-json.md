@@ -9,6 +9,7 @@ Your to-do list lives in `$XDG_DATA_HOME/sessionpulse/` (normally `~/.local/shar
 | `todos-links.json` | Pairs you marked "not the same", and projects linked by a merge |
 | `followups.json` | Per session: when it was read, what it added and closed, what it used, and failures |
 | `followups-usage.json` | Model use per day (calls, tokens, cost), for the last 90 days |
+| `briefs.json` | Per session: a short brief of what it is about, from the last follow-up read |
 
 Fields may be missing on older items; readers should treat a missing field as empty.
 
@@ -56,6 +57,16 @@ A list of items:
 ```
 
 Each pair is sorted. Follow-ups in a project also see the open items of its related projects, so they don't add them again and can close them.
+
+## briefs.json
+
+```json
+{"0ce4b6e5-…": {"brief": {"goal": "Move the photo archive to the new bucket", "done": ["Copied 2024 and 2025"],
+  "open": ["Copy 2023"], "blocked": "Legal has to approve the font licenses", "next": "Copy 2023 and switch the URLs"},
+  "turns": 48, "project": "work/photo-archive", "model": "haiku", "at": "…"}}
+```
+
+Written each time follow-ups read a session, and sent back with the next read so only the new turns need to go to the model. `turns` is how many turns it covers. `done` and `open` hold at most five points each. The session detail in History shows it.
 
 ## Export
 
